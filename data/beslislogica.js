@@ -1,38 +1,50 @@
 /*
  * Beslislogica van de filtertool.
  *
- * Bron: WI: Overlijden, stap 4 — "Bepaal de vervolgstap: overleggen of later
- * terugbellen". De filter dekt alleen die stap. Stap 1 t/m 3 (checkvragen,
- * zoeken in Hermes, case aanmaken of aanvullen) doet de voorlichter ervoor,
- * stap 5 (afronding noteren) erna.
+ * Twee werkinstructies komen hier samen:
+ *
+ *   WI: Overlijden, stap 4 — "Bepaal de vervolgstap: overleggen of later
+ *   terugbellen". Die bepaalt of je overlegt, en of dat nu moet of tijdens
+ *   kantoortijd kan. Dat zijn de regels hieronder.
+ *
+ *   WI: Overleg met post of casemanagement. Die bepaalt met wie. Dat hangt af
+ *   van waar de beller is en staat in data/aanspreekpunt.js. De regels
+ *   hieronder noemen dus geen namen, maar een soort:
+ *       metWieSoort: 'aanspreekpunt'  het eerste aanspreekpunt zelf
+ *       metWieSoort: 'dda'            de DDA daarvan
+ *       metWieSoort: 'auto'           binnen kantoortijd het aanspreekpunt,
+ *                                     daarbuiten de DDA
+ *   Staat er een vaste `metWie` in het advies, dan wint die.
+ *
+ * Stap 1 t/m 3 van WI: Overlijden (checkvragen, Hermes) doet de voorlichter
+ * hiervoor, stap 5 (afronding noteren) staat als laatste actie in elk advies.
  *
  * De logica bestaat uit twee delen:
  *
  *  1. stappen — de vragen die de voorlichter krijgt, in volgorde. Een stap met
- *     een `als` wordt alleen gesteld als die voorwaarde klopt, zodat niemand
- *     vragen krijgt die er voor zijn situatie niet toe doen.
+ *     een `als` wordt alleen gesteld als die voorwaarde klopt.
  *
  *  2. regels — van boven naar beneden doorlopen; de eerste regel die past,
  *     geeft het advies. De laatste regel heeft geen voorwaarde en vangt alles
- *     op wat de instructie niet dekt.
+ *     op wat de instructies niet dekken.
  *
  * Een voorwaarde is een object: elke sleutel moet kloppen (EN), elke lijst met
  * waarden is een keuze (OF). Bijvoorbeeld:
- *     { begraven: ['ja'], lokaleKantoortijd: ['nee'] }
+ *     { begraven: ['ja'], kantoortijd: ['nee'] }
  *
  * Staat er een lijst van zulke objecten, dan hoeft er maar één te kloppen:
- *     [ { melder: ['autoriteiten'] }, { begraven: ['onbekend'] } ]
+ *     [ { melder: ['autoriteiten'] }, { begraven: ['nee', 'ja'] } ]
  *
- * Naast de antwoorden kun je één afgeleid feit gebruiken, dat de tool zelf
- * uitrekent uit de klok en de postenlijst:
- *     lokaleKantoortijd — 'ja' | 'nee' | 'onbekend'
- *
- * Dat feit komt uit het LAND VAN OVERLIJDEN, want daar zit de zaak. Waar de
- * beller is, staat los daarvan: de tool laat die klok zien, maar laat er geen
- * regel op draaien. Zie docs/beslislogica.md — dit is een openstaande vraag.
+ * Naast de antwoorden kun je drie afgeleide feiten gebruiken, die de tool zelf
+ * uitrekent uit de klok, de postenlijst en de plek van de beller:
+ *     aanspreekpunt — 'casemanagement' | 'post' | 'waarnemend' | 'regio' |
+ *                     'geen-bijstand' | 'onbekend'
+ *     kantoortijd   — 'ja' | 'nee' | 'onbekend' | 'nvt'   (van het aanspreekpunt)
+ *     caribisch     — 'ja' | 'nee'  (beller of overlijden in de Caribische
+ *                                    delen van het Koninkrijk)
  *
  * LET OP: de openingstijden in data/posten.js zijn nog voorbeelden. Daarmee is
- * "lokale kantoortijd" nu een aanname, niet een feit.
+ * "binnen of buiten kantoortijd" nu een aanname.
  */
 window.FILTERLOGICA = (function () {
   'use strict';
@@ -40,17 +52,16 @@ window.FILTERLOGICA = (function () {
   var WI = 'https://voorlichting.nederlandwereldwijd.nl/voorlichting/werkinstructies-consulaire-bijstand/';
 
   var LINK = {
-    overleg: WI + 'overleg-met-post-of-casemanagement',
-    nietBereikbaar: WI + 'collega-niet-bereikbaar-voor-een-consulair-geval',
     bijstand: WI + 'aanmerking-consulaire-bijstand',
     whatsapp: WI + 'hulpvraag-via-whatsapp',
-    email: WI + 'hulpvraag-via-email'
+    email: WI + 'hulpvraag-via-email',
+    nietBereikbaar: WI + 'collega-niet-bereikbaar-voor-een-consulair-geval'
   };
 
   /* De twee zijpaden die de instructie onder stap 4 noemt. */
   var TWIJFEL = {
     vraag: 'Ik twijfel om de DDA te bellen',
-    antwoord: 'Overleg eerst met de vraagbaak. Is er geen vraagbaak? Overleg dan met je directe collega’s en besluit samen of je de DDA van de post of van casemanagement belt.'
+    antwoord: 'Overleg eerst met de vraagbaak. Is er geen vraagbaak? Overleg dan met je directe collega’s en besluit samen.'
   };
 
   var NIEMAND = {
@@ -60,6 +71,7 @@ window.FILTERLOGICA = (function () {
   };
 
   var NOTEER = 'Noteer in de Communication-tab van Hermes hoe je het gesprek hebt afgerond (stap 5).';
+  var WACHT = 'Vraag of je de beller in de wacht mag zetten en zeg dat je gaat overleggen met een collega.';
 
   var stappen = [
     {
@@ -85,33 +97,36 @@ window.FILTERLOGICA = (function () {
       ]
     },
     {
-      id: 'post',
-      type: 'post',
-      /* Niet vragen als de route al vastligt zonder het land: bij "weet ik
-       * niet" over begraven of gecremeerd wijst de instructie sowieso naar
-       * de twijfelroute. */
-      als: [{ melder: ['autoriteiten'] }, { begraven: ['nee', 'ja'] }],
-      vraag: 'In welk land is de persoon overleden?',
-      hint: 'Je ziet meteen hoe laat het daar is en of het daar kantoortijd is.'
-    },
-    {
       id: 'bellerLand',
       type: 'post',
       als: [{ melder: ['autoriteiten'] }, { begraven: ['nee', 'ja'] }],
       vraag: 'Waar is de beller?',
-      hint: 'Bellers uit het buitenland komen ook bij ons uit, dus de Nederlandse klok zegt niets over hun dag.',
-      /* Twee snelkeuzes boven de landenlijst. Een snelkeuze met `alsNiet`
-       * verdwijnt als die voorwaarde klopt. */
+      hint: 'Hier hangt aan vast met wie je overlegt, en welke klok telt.',
       snelkeuzes: [
-        { waarde: 'zelfde', label: 'In hetzelfde land als het overlijden', alsNiet: { post: ['onbekend'] } },
-        { waarde: 'nederland', label: 'In Nederland' }
+        { waarde: 'nederland', label: 'In Nederland', toelichting: 'Dan is casemanagement het aanspreekpunt.' }
+      ],
+      extraRijen: [
+        { waarde: 'waarnemend', label: 'Een ander land, staat niet in de lijst', toelichting: 'De tool wijst je naar de landenpagina’s.' },
+        { waarde: 'onbekend', label: 'Weet ik niet', toelichting: 'Zonder dit kan de tool geen aanspreekpunt bepalen.' }
+      ]
+    },
+    {
+      id: 'overlijdenLand',
+      type: 'post',
+      als: [{ melder: ['autoriteiten'] }, { begraven: ['nee', 'ja'] }],
+      vraag: 'In welk land is de persoon overleden?',
+      hint: 'Checkvraag uit stap 1. Bepaalt niet met wie je overlegt, wel welke post de zaak heeft.',
+      snelkeuzes: [
+        { waarde: 'zelfde', label: 'In hetzelfde land als de beller', alsNiet: { bellerLand: ['onbekend', 'waarnemend'] } }
+      ],
+      extraRijen: [
+        { waarde: 'onbekend', label: 'Weet ik niet of het land staat er niet bij' }
       ]
     },
     {
       id: 'familie',
       type: 'keuze',
-      /* Alleen nodig in de tak waar de instructie erop splitst. */
-      als: { melder: ['anders'], begraven: ['ja'], lokaleKantoortijd: ['nee'] },
+      als: { melder: ['anders'], begraven: ['ja'], kantoortijd: ['nee'] },
       vraag: 'Zijn de directe nabestaanden al op de hoogte?',
       hint: 'Partner, kinderen of andere directe familie.',
       opties: [
@@ -147,118 +162,122 @@ window.FILTERLOGICA = (function () {
   };
 
   /* Welke afgeleide feiten onder "Waarom dit advies" komen te staan. */
-  var toonFeiten = ['lokaleKantoortijd'];
+  var toonFeiten = ['kantoortijd'];
 
   var feitLabels = {
-    lokaleKantoortijd: {
-      label: 'Lokale kantoortijd',
+    kantoortijd: {
+      label: 'Kantoortijd bij het aanspreekpunt',
       waardes: {
-        ja: 'binnen lokale kantoortijden',
-        nee: 'buiten lokale kantoortijden',
-        onbekend: 'onbekend — land niet in de lijst'
+        ja: 'binnen kantoortijden',
+        nee: 'buiten kantoortijden',
+        onbekend: 'onbekend',
+        nvt: 'niet van toepassing'
+      }
+    },
+    aanspreekpunt: {
+      label: 'Aanspreekpunt',
+      waardes: {
+        casemanagement: 'casemanagement',
+        post: 'de post ter plaatse',
+        waarnemend: 'de waarnemende post',
+        regio: 'de regio-casemanager',
+        'geen-bijstand': 'geen consulaire bijstand',
+        onbekend: 'nog niet te bepalen'
       }
     }
   };
 
   var regels = [
     {
+      id: 'caribische-koninkrijksdelen',
+      naam: 'Caribische delen van het Koninkrijk',
+      grondslag: 'WI: Overleg met post of casemanagement — Caribische Koninkrijksdelen',
+      wanneer: { caribisch: ['ja'] },
+      advies: {
+        niveau: 'geen',
+        kop: 'Geen consulaire bijstand — verwijs door',
+        metWieSoort: 'aanspreekpunt',
+        stappen: [
+          'Leg uit dat het ministerie van Buitenlandse Zaken hier geen consulaire bijstand verleent.',
+          'Verwijs door. Geef in een noodgeval het nummer van de lokale hulpdiensten uit het reisadvies.',
+          NOTEER
+        ],
+        toelichting: 'Dit geldt voor de Caribische landen (Aruba, Curaçao, Sint Maarten) en de bijzondere openbare lichamen (Bonaire, Sint Eustatius, Saba).'
+      }
+    },
+    {
       id: 'lokale-autoriteiten',
       naam: 'Melding van lokale autoriteiten',
-      grondslag: 'Stap 4 — Melding van lokale autoriteiten',
+      grondslag: 'WI: Overlijden, stap 4 — Melding van lokale autoriteiten',
       wanneer: { melder: ['autoriteiten'] },
       advies: {
         niveau: 'direct',
         kop: 'Altijd overleggen',
-        metWie: 'De post of casemanagement — ook buiten reguliere kantoortijden',
-        metWieLink: { tekst: 'Bekijk met wie je overlegt', url: LINK.overleg },
-        stappen: [
-          'Vraag of je de beller in de wacht mag zetten en zeg dat je gaat overleggen met een collega.',
-          'Overleg met de post of casemanagement.',
-          NOTEER
-        ],
+        metWieSoort: 'auto',
+        stappen: [WACHT, 'Overleg, ook buiten reguliere kantoortijden.', NOTEER],
         toelichting: 'Bij een melding van de lokale autoriteiten overleg je altijd, ongeacht het tijdstip.',
         anders: [NIEMAND]
       }
     },
     {
       id: 'recent-binnen-kantoortijd',
-      naam: 'Recent overleden, binnen lokale kantoortijden',
-      grondslag: 'Stap 4 — Recent overleden, tijdens lokale kantoortijden',
-      wanneer: { melder: ['anders'], begraven: ['nee'], lokaleKantoortijd: ['ja'] },
+      naam: 'Recent overleden, binnen kantoortijden',
+      grondslag: 'WI: Overlijden, stap 4 — Recent overleden, tijdens lokale kantoortijden',
+      wanneer: { melder: ['anders'], begraven: ['nee'], kantoortijd: ['ja'] },
       advies: {
         niveau: 'overleg',
-        kop: 'Overleggen met de post of casemanagement',
-        metWie: 'De post of casemanagement',
-        metWieLink: { tekst: 'Bekijk met wie je overlegt', url: LINK.overleg },
-        stappen: [
-          'Vraag of je de beller in de wacht mag zetten en zeg dat je gaat overleggen met een collega.',
-          'Overleg met de post of casemanagement.',
-          NOTEER
-        ],
+        kop: 'Overleggen',
+        metWieSoort: 'aanspreekpunt',
+        stappen: [WACHT, 'Overleg nu.', NOTEER],
         anders: [NIEMAND]
       }
     },
     {
       id: 'recent-buiten-kantoortijd',
-      naam: 'Recent overleden, buiten lokale kantoortijden',
-      grondslag: 'Stap 4 — Recent overleden, buiten lokale kantoortijden',
-      wanneer: { melder: ['anders'], begraven: ['nee'], lokaleKantoortijd: ['nee'] },
+      naam: 'Recent overleden, buiten kantoortijden',
+      grondslag: 'WI: Overlijden, stap 4 — Recent overleden, buiten lokale kantoortijden',
+      wanneer: { melder: ['anders'], begraven: ['nee'], kantoortijd: ['nee'] },
       advies: {
         niveau: 'direct',
         kop: 'Overleggen met de DDA',
-        metWie: 'De DDA van de post of van casemanagement',
-        metWieLink: { tekst: 'Bekijk met welke DDA je overlegt', url: LINK.overleg },
-        stappen: [
-          'Vraag of je de beller in de wacht mag zetten en zeg dat je gaat overleggen met een collega.',
-          'Overleg met de DDA van de post of van casemanagement.',
-          NOTEER
-        ],
-        toelichting: 'De persoon is nog niet begraven of gecremeerd; dat wacht niet tot de post weer opengaat.',
+        metWieSoort: 'dda',
+        stappen: [WACHT, 'Bel de DDA; dit wacht niet tot morgen.', NOTEER],
+        toelichting: 'De persoon is nog niet begraven of gecremeerd; dat wacht niet tot het aanspreekpunt weer open is.',
         anders: [TWIJFEL, NIEMAND]
       }
     },
     {
       id: 'begraven-binnen-kantoortijd',
-      naam: 'Al begraven of gecremeerd, binnen lokale kantoortijden',
-      grondslag: 'Stap 4 — Persoon is al begraven/gecremeerd, tijdens lokale kantoortijden',
-      wanneer: { melder: ['anders'], begraven: ['ja'], lokaleKantoortijd: ['ja'] },
+      naam: 'Al begraven of gecremeerd, binnen kantoortijden',
+      grondslag: 'WI: Overlijden, stap 4 — Al begraven/gecremeerd, tijdens lokale kantoortijden',
+      wanneer: { melder: ['anders'], begraven: ['ja'], kantoortijd: ['ja'] },
       advies: {
         niveau: 'overleg',
-        kop: 'Overleggen met de post of casemanagement',
-        metWie: 'De post of casemanagement',
-        metWieLink: { tekst: 'Bekijk met wie je overlegt', url: LINK.overleg },
-        stappen: [
-          'Vraag of je de beller in de wacht mag zetten en zeg dat je gaat overleggen met een collega.',
-          'Overleg met de post of casemanagement.',
-          NOTEER
-        ],
+        kop: 'Overleggen',
+        metWieSoort: 'aanspreekpunt',
+        stappen: [WACHT, 'Overleg nu.', NOTEER],
         anders: [NIEMAND]
       }
     },
     {
       id: 'begraven-buiten-kantoortijd-familie-onwetend',
-      naam: 'Al begraven of gecremeerd, buiten lokale kantoortijden, familie nog niet op de hoogte',
-      grondslag: 'Stap 4 — Persoon is al begraven/gecremeerd, buiten lokale kantoortijden',
-      wanneer: { melder: ['anders'], begraven: ['ja'], lokaleKantoortijd: ['nee'], familie: ['nee', 'onbekend'] },
+      naam: 'Al begraven of gecremeerd, buiten kantoortijden, familie nog niet op de hoogte',
+      grondslag: 'WI: Overlijden, stap 4 — Al begraven/gecremeerd, buiten lokale kantoortijden',
+      wanneer: { melder: ['anders'], begraven: ['ja'], kantoortijd: ['nee'], familie: ['nee', 'onbekend'] },
       advies: {
         niveau: 'direct',
         kop: 'Overleggen met de DDA',
-        metWie: 'De DDA van de post of van casemanagement',
-        metWieLink: { tekst: 'Bekijk met welke DDA je overlegt', url: LINK.overleg },
-        stappen: [
-          'Vraag of je de beller in de wacht mag zetten en zeg dat je gaat overleggen met een collega.',
-          'Overleg met de DDA van de post of van casemanagement.',
-          NOTEER
-        ],
+        metWieSoort: 'dda',
+        stappen: [WACHT, 'Bel de DDA; de familie weet het nog niet.', NOTEER],
         toelichting: 'Uitstel tot de volgende werkdag mag alleen als je wéét dat de familie al op de hoogte is. Weet je dat niet zeker, dan volgt de tool deze tak.',
         anders: [TWIJFEL, NIEMAND]
       }
     },
     {
       id: 'begraven-buiten-kantoortijd-familie-weet-het',
-      naam: 'Al begraven of gecremeerd, buiten lokale kantoortijden, familie is op de hoogte',
-      grondslag: 'Stap 4 — Persoon is al begraven/gecremeerd, buiten lokale kantoortijden',
-      wanneer: { melder: ['anders'], begraven: ['ja'], lokaleKantoortijd: ['nee'], familie: ['ja'] },
+      naam: 'Al begraven of gecremeerd, buiten kantoortijden, familie is op de hoogte',
+      grondslag: 'WI: Overlijden, stap 4 — Al begraven/gecremeerd, buiten lokale kantoortijden',
+      wanneer: { melder: ['anders'], begraven: ['ja'], kantoortijd: ['nee'], familie: ['ja'] },
       advies: {
         niveau: 'geen',
         kop: 'Geen overleg — laat terugbellen of mailen',
@@ -273,7 +292,7 @@ window.FILTERLOGICA = (function () {
     {
       id: 'begraven-onbekend',
       naam: 'Onbekend of de persoon al begraven of gecremeerd is',
-      grondslag: 'Stap 4 — "Ik twijfel om de DDA te bellen"',
+      grondslag: 'WI: Overlijden, stap 4 — "Ik twijfel om de DDA te bellen"',
       wanneer: { melder: ['anders'], begraven: ['onbekend'] },
       advies: {
         niveau: 'overleg',
@@ -289,21 +308,39 @@ window.FILTERLOGICA = (function () {
       }
     },
     {
-      id: 'land-onbekend',
-      naam: 'Lokale kantoortijd niet vast te stellen',
-      grondslag: 'Stap 4 — "Ik twijfel om de DDA te bellen"',
-      wanneer: { lokaleKantoortijd: ['onbekend'] },
+      id: 'beller-onbekend',
+      naam: 'Onbekend waar de beller is',
+      grondslag: 'WI: Overleg met post of casemanagement',
+      wanneer: { aanspreekpunt: ['onbekend'] },
       advies: {
         niveau: 'overleg',
-        kop: 'Zoek de lokale kantoortijd op, of gebruik de twijfelroute',
-        metWie: 'Eerst de vraagbaak; is die er niet, je directe collega’s',
+        kop: 'Vraag eerst waar de beller is',
+        metWie: 'Nog niet te bepalen',
         stappen: [
-          'Zoek op wat de kantoortijden van de post in dat land zijn — daar hangt de hele vervolgstap van af.',
-          'Lukt dat niet snel: overleg met de vraagbaak, of anders met je directe collega’s.',
+          'Vraag in welk land de beller op dit moment is.',
+          'Daarna zegt de tool met wie je overlegt en of dat nu moet.',
           NOTEER
         ],
-        toelichting: 'Dit land staat niet in de postenlijst van de tool, dus ze kan niet uitrekenen of het daar kantoortijd is.',
+        toelichting: 'Met wie je overlegt hangt af van waar de beller is: in Nederland casemanagement, in het buitenland de post daar.',
         anders: [NIEMAND]
+      }
+    },
+    {
+      id: 'kantoortijd-onbekend',
+      naam: 'Kantoortijden van het aanspreekpunt niet vast te stellen',
+      grondslag: 'WI: Overleg met post of casemanagement — land zonder Nederlandse post',
+      wanneer: { kantoortijd: ['onbekend'] },
+      advies: {
+        niveau: 'overleg',
+        kop: 'Zoek eerst uit welke post waarneemt',
+        metWieSoort: 'aanspreekpunt',
+        stappen: [
+          'Kijk bij de resortlanden op de landenpagina’s welke post verantwoordelijk is.',
+          'Bel die post binnen kantoortijd; daarbuiten de post-DDA via de BOA.',
+          NOTEER
+        ],
+        toelichting: 'Zonder de kantoortijden van die post kan de tool niet zeggen of dit tot morgen kan wachten. Twijfel je: eerst de vraagbaak.',
+        anders: [TWIJFEL, NIEMAND]
       }
     },
     {
@@ -320,16 +357,16 @@ window.FILTERLOGICA = (function () {
           'Meld de combinatie bij de beheerder van de tool, zodat de logica kan worden aangevuld.',
           NOTEER
         ],
-        toelichting: 'De tool geeft hier geen zelfstandig advies: geen enkele regel uit stap 4 past op deze antwoorden.',
+        toelichting: 'De tool geeft hier geen zelfstandig advies: geen enkele regel past op deze antwoorden.',
         anders: [NIEMAND]
       }
     }
   ];
 
   return {
-    versie: '1.0',
+    versie: '2.0',
     bijgewerkt: '2026-09-14',
-    bron: 'WI: Overlijden — stap 4: Bepaal de vervolgstap: overleggen of later terugbellen',
+    bron: 'WI: Overlijden (stap 4) en WI: Overleg met post of casemanagement',
     links: LINK,
     start: start,
     stappen: stappen,

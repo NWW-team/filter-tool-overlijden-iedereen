@@ -26,92 +26,129 @@ window.FILTERDATA = (function () {
 
   var posten = [
     {
-      id: 'madrid', naam: 'Ambassade Madrid', land: 'Spanje',
+      soort: 'post', id: 'madrid', naam: 'Ambassade Madrid', land: 'Spanje',
       tijdzone: 'Europe/Madrid', werkweekTekst: 'ma t/m vr',
       uren: werkweek(MA_VR, '09:00', '17:00'),
       sluiting: ['2026-10-12', '2026-12-25']
     },
     {
-      id: 'berlijn', naam: 'Ambassade Berlijn', land: 'Duitsland',
+      soort: 'post', id: 'berlijn', naam: 'Ambassade Berlijn', land: 'Duitsland',
       tijdzone: 'Europe/Berlin', werkweekTekst: 'ma t/m vr',
       uren: werkweek(MA_VR, '09:00', '17:00'),
       sluiting: ['2026-10-03', '2026-12-25']
     },
     {
-      id: 'londen', naam: 'Ambassade Londen', land: 'Verenigd Koninkrijk',
+      soort: 'post', id: 'londen', naam: 'Ambassade Londen', land: 'Verenigd Koninkrijk',
       tijdzone: 'Europe/London', werkweekTekst: 'ma t/m vr',
       uren: werkweek(MA_VR, '09:00', '17:00'),
       sluiting: ['2026-12-25', '2026-12-28']
     },
     {
-      id: 'cairo', naam: 'Ambassade Caïro', land: 'Egypte',
+      soort: 'post', id: 'cairo', naam: 'Ambassade Caïro', land: 'Egypte',
       tijdzone: 'Africa/Cairo', werkweekTekst: 'zo t/m do',
       uren: werkweek(ZO_DO, '08:30', '15:30'),
       sluiting: ['2026-10-06'],
       opmerking: 'Afwijkende werkweek: vrijdag en zaterdag gesloten.'
     },
     {
-      id: 'riyad', naam: 'Ambassade Riyad', land: 'Saoedi-Arabië',
+      soort: 'post', id: 'riyad', naam: 'Ambassade Riyad', land: 'Saoedi-Arabië',
       tijdzone: 'Asia/Riyadh', werkweekTekst: 'zo t/m do',
       uren: werkweek(ZO_DO, '08:30', '15:30'),
       sluiting: [],
       opmerking: 'Afwijkende werkweek: vrijdag en zaterdag gesloten.'
     },
     {
-      id: 'telaviv', naam: 'Ambassade Tel Aviv', land: 'Israël',
+      soort: 'post', id: 'telaviv', naam: 'Ambassade Tel Aviv', land: 'Israël',
       tijdzone: 'Asia/Jerusalem', werkweekTekst: 'zo t/m do',
       uren: werkweek(ZO_DO, '08:30', '16:00'),
       sluiting: [],
       opmerking: 'Afwijkende werkweek: vrijdag en zaterdag gesloten.'
     },
     {
-      id: 'ankara', naam: 'Ambassade Ankara', land: 'Turkije',
+      soort: 'post', id: 'ankara', naam: 'Ambassade Ankara', land: 'Turkije',
       tijdzone: 'Europe/Istanbul', werkweekTekst: 'ma t/m vr',
       uren: werkweek(MA_VR, '09:00', '17:30'),
       sluiting: ['2026-10-29']
     },
     {
-      id: 'rabat', naam: 'Ambassade Rabat', land: 'Marokko',
+      soort: 'post', id: 'rabat', naam: 'Ambassade Rabat', land: 'Marokko',
       tijdzone: 'Africa/Casablanca', werkweekTekst: 'ma t/m vr',
       uren: werkweek(MA_VR, '08:30', '16:30'),
       sluiting: []
     },
     {
-      id: 'bangkok', naam: 'Ambassade Bangkok', land: 'Thailand',
+      soort: 'post', id: 'bangkok', naam: 'Ambassade Bangkok', land: 'Thailand',
       tijdzone: 'Asia/Bangkok', werkweekTekst: 'ma t/m vr',
       uren: { 1: [['08:30', '12:00'], ['13:00', '16:30']], 2: [['08:30', '12:00'], ['13:00', '16:30']], 3: [['08:30', '12:00'], ['13:00', '16:30']], 4: [['08:30', '12:00'], ['13:00', '16:30']], 5: [['08:30', '12:00'], ['13:00', '16:30']] },
       sluiting: ['2026-12-05'],
       opmerking: 'Gesloten tussen de middag (12:00–13:00 lokale tijd).'
     },
     {
-      id: 'jakarta', naam: 'Ambassade Jakarta', land: 'Indonesië',
+      soort: 'post', id: 'jakarta', naam: 'Ambassade Jakarta', land: 'Indonesië',
       tijdzone: 'Asia/Jakarta', werkweekTekst: 'ma t/m vr',
       uren: werkweek(MA_VR, '08:00', '16:00'),
       sluiting: ['2026-08-17']
     },
     {
-      id: 'nairobi', naam: 'Ambassade Nairobi', land: 'Kenia',
+      soort: 'post', id: 'nairobi', naam: 'Ambassade Nairobi', land: 'Kenia',
       tijdzone: 'Africa/Nairobi', werkweekTekst: 'ma t/m vr',
       uren: werkweek(MA_VR, '08:00', '16:00'),
       sluiting: []
     },
     {
-      id: 'paramaribo', naam: 'Ambassade Paramaribo', land: 'Suriname',
+      soort: 'post', id: 'paramaribo', naam: 'Ambassade Paramaribo', land: 'Suriname',
       tijdzone: 'America/Paramaribo', werkweekTekst: 'ma t/m vr',
       uren: werkweek(MA_VR, '07:30', '15:00'),
       sluiting: ['2026-11-25']
     },
     {
-      id: 'washington', naam: 'Ambassade Washington', land: 'Verenigde Staten',
+      soort: 'post', id: 'washington', naam: 'Ambassade Washington', land: 'Verenigde Staten',
       tijdzone: 'America/New_York', werkweekTekst: 'ma t/m vr',
       uren: werkweek(MA_VR, '09:00', '17:00'),
       sluiting: ['2026-11-26']
     },
     {
-      id: 'sydney', naam: 'Consulaat-generaal Sydney', land: 'Australië',
+      soort: 'post', id: 'sydney', naam: 'Consulaat-generaal Sydney', land: 'Australië',
       tijdzone: 'Australia/Sydney', werkweekTekst: 'ma t/m vr',
       uren: werkweek(MA_VR, '09:00', '17:00'),
       sluiting: []
+    }
+  ];
+
+  /* Plekken die geen gewone post zijn. Ze hebben geen openingstijden, want de
+   * tool bepaalt er geen kantoortijd voor: ze leiden naar een ander loket.
+   * Uit WI: Overleg met post of casemanagement. */
+  var bijzonder = [
+    {
+      soort: 'regio', id: 'oekraine', naam: 'Casemanager Oekraïne', land: 'Oekraïne',
+      opmerking: 'Bij een beller uit Oekraïne overleg je met de casemanager voor Oekraïne, niet met de post.'
+    },
+    {
+      soort: 'caribisch-land', id: 'aruba', land: 'Aruba',
+      naam: 'Vertegenwoordiging van Nederland in Oranjestad (VNO)'
+    },
+    {
+      soort: 'caribisch-land', id: 'curacao', land: 'Curaçao',
+      naam: 'Vertegenwoordiging van Nederland in Willemstad (VNW)'
+    },
+    {
+      soort: 'caribisch-land', id: 'sintmaarten', land: 'Sint Maarten',
+      naam: 'Vertegenwoordiging van Nederland in Philipsburg (VNP)'
+    },
+    {
+      soort: 'caribisch-gemeente', id: 'bonaire', land: 'Bonaire',
+      naam: 'De lokale hulpdiensten',
+      reisadvies: 'https://www.nederlandwereldwijd.nl/reisadvies/bonaire'
+    },
+    {
+      soort: 'caribisch-gemeente', id: 'sinteustatius', land: 'Sint Eustatius',
+      naam: 'De lokale hulpdiensten',
+      reisadvies: 'https://www.nederlandwereldwijd.nl/reisadvies/sint-eustatius'
+    },
+    {
+      soort: 'caribisch-gemeente', id: 'saba', land: 'Saba',
+      naam: 'De lokale hulpdiensten',
+      reisadvies: 'https://www.nederlandwereldwijd.nl/reisadvies/saba'
     }
   ];
 
@@ -128,10 +165,10 @@ window.FILTERDATA = (function () {
   };
 
   return {
-    posten: posten,
+    posten: posten.concat(bijzonder),
     casemanagement: casemanagement,
     /* Verwijder deze regel zodra de echte postenlijst erin staat; hij staat
      * dan ook niet meer onderaan het scherm. */
-    waarschuwing: 'De openingstijden en werkweken in deze tool zijn voorbeelden, nog niet de echte postgegevens. "Binnen of buiten lokale kantoortijden" is daarmee nu een aanname.'
+    waarschuwing: 'De openingstijden en werkweken in deze tool zijn voorbeelden, nog niet de echte postgegevens. "Binnen of buiten kantoortijden" is daarmee nu een aanname.'
   };
 })();

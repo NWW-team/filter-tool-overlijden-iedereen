@@ -320,7 +320,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
 .postregel-naam { font-size: 13px; color: var(--tekst-zacht); }
 .postregel-rechts { flex: none; display: flex; align-items: center; gap: 8px; }
 .postregel-tijd { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--tekst-zacht); }
-.postregel--onbekend .postregel-land { font-weight: 500; color: var(--tekst-zacht); }
+.postregel--extra .postregel-land { font-weight: 500; color: var(--tekst-zacht); }
 
 .vlag {
   padding: 2px 8px;
@@ -331,7 +331,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
 }
 .vlag--open { background: var(--geen-zacht); color: var(--geen); }
 .vlag--dicht { background: var(--direct-zacht); color: var(--direct); }
-.vlag--onbekend { background: var(--vlak-2); color: var(--tekst-zacht); }
+.vlag--anders { background: var(--vlak-2); color: var(--tekst-zacht); }
 
 /* --------------------------------------------------------------- uitkomst */
 
@@ -374,6 +374,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
 }
 .metwie-label { font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--tekst-zacht); }
 .metwie-waarde { font-weight: 650; }
+.metwie-uitleg { flex-basis: 100%; font-size: 13.5px; color: var(--tekst-zacht); }
 .metwie-link { flex-basis: 100%; font-size: 13.5px; }
 
 .kaart--anders { padding: 16px 22px 18px; }

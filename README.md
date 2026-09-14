@@ -6,19 +6,15 @@ dingen waar dat besluit van afhangt — de situatie, het moment en de plaats —
 rekent zelf uit of het in het land van overlijden binnen lokale kantoortijden
 is.
 
-De beslislogica volgt **WI: Overlijden, stap 4 — Bepaal de vervolgstap:
-overleggen of later terugbellen**. Stap 1 t/m 3 (checkvragen, Hermes) doet de
-voorlichter ervoor; stap 5 staat als laatste actie in elk advies.
+Twee werkinstructies zitten erin: **WI: Overlijden, stap 4** bepaalt of je
+overlegt en hoe snel, **WI: Overleg met post of casemanagement** bepaalt met
+wie. Stap 1 t/m 3 (checkvragen, Hermes) doet de voorlichter ervoor; stap 5
+staat als laatste actie in elk advies.
 
-> **Nog niet af, op twee punten.**
-> 1. De openingstijden in `data/posten.js` zijn voorbeelden, nog niet de echte
->    postenlijst. "Binnen of buiten lokale kantoortijden" is daarmee een
->    aanname. Dat staat ook onder aan het scherm.
-> 2. Wie je precies belt — de post of casemanagement — staat in de instructie
->    op een aparte pagina die hier nog niet in zit. De tool linkt ernaar in
->    plaats van het zelf te bepalen.
->
-> Gebruik dit dus nog niet voor echte meldingen.
+> **Nog niet af op één punt.** De openingstijden in `data/posten.js` zijn
+> voorbeelden, nog niet de echte postenlijst. "Binnen of buiten kantoortijd" is
+> daarmee een aanname. Dat staat ook onder aan het scherm. Gebruik dit dus nog
+> niet voor echte meldingen.
 
 ## Bekijken
 
@@ -36,12 +32,16 @@ te publiceren. Alleen de omslag verschilt; de tool zelf staat in `assets/` en
   beantwoorden. Backspace gaat terug, Escape begint opnieuw bij de volgende
   beller. Een vraag wordt overgeslagen zodra het antwoord de uitkomst niet meer
   kan veranderen.
-* **De beller en het overlijden worden apart gevraagd.** Zit de beller ergens
-  anders, dan zet de tool die klok er apart bij — want de Nederlandse klok, de
-  klok van de beller en die van de post kunnen alle drie verschillen.
+* **Met wie, niet alleen of.** De tool bepaalt zelf of je bij casemanagement,
+  bij de post ter plaatse, bij de waarnemende post of bij de casemanager voor
+  Oekraïne moet zijn — en buiten kantoortijd bij de DDA daarvan. Dat hangt af
+  van waar de beller is, dus dat wordt apart gevraagd.
+* **Caribische delen van het Koninkrijk** komen er als eigen uitkomst uit:
+  geen consulaire bijstand, met de vertegenwoordiging of de lokale
+  hulpdiensten erbij.
 * **De klok en de postenlijst doen het rekenwerk.** De voorlichter hoeft niet
-  te weten hoe laat het in Caïro is of dat daar de werkweek van zondag tot
-  donderdag loopt. Tijdzone, afwijkende werkweek, pauzes en lokale feestdagen
+  te weten hoe laat het bij het aanspreekpunt is, of dat daar de werkweek van
+  zondag tot donderdag loopt. Tijdzone, afwijkende werkweek, pauzes en lokale feestdagen
   zitten in de data.
 * **De zijpaden uit de instructie staan erbij.** "Ik twijfel om de DDA te
   bellen" en "Ik krijg niemand aan de telefoon" verschijnen bij de adviezen
@@ -65,9 +65,10 @@ index.html              het scherm (leeg; de tool bouwt zichzelf op)
 demo-artifact.html      dezelfde tool, als deelbare demopagina
 assets/app.js           de motor: vragen stellen, regels toepassen, tekenen
 assets/styles.css       vormgeving, licht en donker
-data/beslislogica.js    de vragen en de regels  ← hier past de instructie in
-data/posten.js          openingstijden en tijdzones per post
-docs/beslislogica.md    dezelfde logica in woorden, om naast de instructie te leggen
+data/beslislogica.js    de vragen en de regels: wél of niet overleggen
+data/aanspreekpunt.js   met wie je overlegt, per soort plek
+data/posten.js          kantoortijden en tijdzones per land
+docs/beslislogica.md    alles in woorden, om naast de instructies te leggen
 ```
 
 ## De logica aanpassen
@@ -80,17 +81,24 @@ naar beneden doorlopen, de eerste die past geeft het advies. Een voorwaarde
 leest als "elke sleutel moet kloppen, elke lijst is een keuze":
 
 ```js
-wanneer: { begraven: ['ja'], lokaleKantoortijd: ['nee'], familie: ['ja'] }
+wanneer: { begraven: ['ja'], kantoortijd: ['nee'], familie: ['ja'] }
 ```
 
-Naast de antwoorden kun je één feit gebruiken dat de tool zelf uitrekent:
-`lokaleKantoortijd` (`ja` / `nee` / `onbekend`). De laatste regel in de lijst
-heeft geen voorwaarde en vangt alles op wat de instructie niet dekt — laat die
-staan.
+Naast de antwoorden kun je drie feiten gebruiken die de tool zelf uitrekent:
+`aanspreekpunt` (`casemanagement` / `post` / `waarnemend` / `regio` /
+`geen-bijstand` / `onbekend`), `kantoortijd` (`ja` / `nee` / `onbekend` /
+`nvt`) en `caribisch` (`ja` / `nee`). De laatste regel in de lijst heeft geen
+voorwaarde en vangt alles op wat de instructies niet dekken — laat die staan.
 
-**Een post toevoegen of bijwerken** in `data/posten.js`: tijdzone als
+Een regel noemt geen namen maar een soort: `metWieSoort: 'aanspreekpunt'`,
+`'dda'` of `'auto'` (binnen kantoortijd het aanspreekpunt, daarbuiten de DDA).
+Wie dat dan is, komt uit `data/aanspreekpunt.js`.
+
+**Een land toevoegen of bijwerken** in `data/posten.js`: tijdzone als
 IANA-naam, openingstijden per dag (`0` = zondag), lokale feestdagen als datum.
-Zomertijd gaat vanzelf goed.
+Zomertijd gaat vanzelf goed. Een plek met een eigen route (een regio-casemanager
+of een Caribisch deel van het Koninkrijk) krijgt geen openingstijden maar een
+`soort`.
 
 Verhoog na een wijziging `versie` en `bijgewerkt` bovenin
 `data/beslislogica.js`. Die verschijnen onder elk advies, zodat je later kunt
@@ -99,12 +107,10 @@ zien op welke versie een advies gebaseerd was.
 ## Wat er nog niet in zit
 
 * De echte openingstijden van de posten.
-* Wie je precies belt: de post of casemanagement.
-* Welke klok telt als de beller in een ander land zit dan het overlijden — de
-  tool rekent met het land van overlijden en laat de rest zien.
 * Stap 2 en 3 van de instructie (Hermes) — de tool filtert alleen op de
   situatie.
-* Telefoonnummers en doorkiesnummers per post.
+* Telefoonnummers: de tool wijst naar de landenpagina's, de client en de BOA,
+  maar houdt zelf geen nummers bij.
 * Een plek om te draaien: dit is een prototype om te laten zien, geen intern
   gehoste app.
 

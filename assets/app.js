@@ -10,6 +10,7 @@
 
   var L = window.FILTERLOGICA;
   var D = window.FILTERDATA;
+  var W = window.FILTERWAAR;
 
   /* ------------------------------------------------------------------ tijd */
 
@@ -39,6 +40,7 @@
   }
 
   function blokken(org, d) {
+    if (!org.uren) return [];
     if (org.sluiting && org.sluiting.indexOf(d.datum) !== -1) return [];
     return org.uren[d.dagIndex] || [];
   }
@@ -123,12 +125,66 @@
 
   /* ---------------------------------------------------------------- feiten */
 
+  /* Welke plek hoort bij het antwoord op een landvraag? */
+  function plekVan(stapId) {
+    var waarde = state.antwoorden[stapId];
+    if (!waarde || waarde === 'nederland' || waarde === 'waarnemend' || waarde === 'onbekend') return null;
+    if (waarde === 'zelfde') return plekVan('bellerLand');
+    return zoekPost(waarde);
+  }
+
+  function isCaribisch(plek) {
+    return !!plek && String(plek.soort).indexOf('caribisch') === 0;
+  }
+
+  function caribischePlek() {
+    var beller = plekVan('bellerLand');
+    if (isCaribisch(beller)) return beller;
+    var overlijden = plekVan('overlijdenLand');
+    if (isCaribisch(overlijden)) return overlijden;
+    return null;
+  }
+
+  /* Met wie je overlegt — uit WI: Overleg met post of casemanagement. */
+  function aanspreekpunt() {
+    var waarde = state.antwoorden.bellerLand;
+    if (waarde === undefined) return null;
+    var caribisch = caribischePlek();
+    if (caribisch) return bouwAanspreekpunt('geen-bijstand', null, caribisch.land, caribisch);
+    if (waarde === 'nederland') return bouwAanspreekpunt('casemanagement', D.casemanagement, 'Nederland', null);
+    if (waarde === 'waarnemend') return bouwAanspreekpunt('waarnemend', null, null, null);
+    if (waarde === 'onbekend') return bouwAanspreekpunt('onbekend', null, null, null);
+    var plek = zoekPost(waarde);
+    if (!plek) return bouwAanspreekpunt('onbekend', null, null, null);
+    if (plek.soort === 'regio') return bouwAanspreekpunt('regio', D.casemanagement, plek.land, plek);
+    return bouwAanspreekpunt('post', plek, plek.land, plek);
+  }
+
+  function bouwAanspreekpunt(soort, org, land, plek) {
+    var sjabloon = W.soorten[soort];
+    function vul(tekst) {
+      return tekst.replace('{land}', land || 'dat land').replace('{naam}', plek ? plek.naam : 'het lokale loket');
+    }
+    var links = (sjabloon.links || []).slice();
+    if (plek && plek.reisadvies) {
+      links = links.concat([{ tekst: 'Reisadvies ' + plek.land + ' \u2014 in geval van nood', url: plek.reisadvies }]);
+    }
+    return {
+      soort: soort, org: org, land: land, plek: plek,
+      naam: vul(sjabloon.naam), dda: vul(sjabloon.dda), uitleg: vul(sjabloon.uitleg), links: links
+    };
+  }
+
   function feiten() {
     var f = {};
     for (var k in state.antwoorden) f[k] = state.antwoorden[k];
-    if ('post' in state.antwoorden) {
-      var post = zoekPost(state.antwoorden.post);
-      f.lokaleKantoortijd = !post ? 'onbekend' : (isOpen(post, nu()) ? 'ja' : 'nee');
+    f.caribisch = caribischePlek() ? 'ja' : 'nee';
+    var punt = aanspreekpunt();
+    if (punt) {
+      f.aanspreekpunt = punt.soort;
+      if (punt.soort === 'geen-bijstand') f.kantoortijd = 'nvt';
+      else if (!punt.org) f.kantoortijd = 'onbekend';
+      else f.kantoortijd = isOpen(punt.org, nu()) ? 'ja' : 'nee';
     }
     return f;
   }
@@ -199,10 +255,12 @@
     var waarde = state.antwoorden[stapId];
     if (!stap) return waarde;
     if (stap.type === 'post') {
-      if (waarde === 'zelfde') return 'Zelfde land';
+      if (waarde === 'zelfde') return 'Zelfde land als de beller';
       if (waarde === 'nederland') return 'Nederland';
+      if (waarde === 'waarnemend') return 'Ander land, niet in de lijst';
+      if (waarde === 'onbekend') return 'Onbekend';
       var post = zoekPost(waarde);
-      return post ? post.land : 'Land onbekend';
+      return post ? post.land : 'Onbekend';
     }
     var optie = stap.opties.filter(function (o) { return o.waarde === waarde; })[0];
     return optie ? optie.label : waarde;
@@ -467,29 +525,37 @@
         return !term || p.land.toLowerCase().indexOf(term) !== -1 || p.naam.toLowerCase().indexOf(term) !== -1;
       });
       treffers.forEach(function (post) {
-        var open = isOpen(post, moment);
         var knop = el('button', 'postregel');
         knop.type = 'button';
         var links = el('span', 'postregel-links');
         links.appendChild(el('span', 'postregel-land', post.land));
         links.appendChild(el('span', 'postregel-naam', post.naam));
         knop.appendChild(links);
+
         var rechts = el('span', 'postregel-rechts');
-        rechts.appendChild(el('span', 'postregel-tijd', klokTekst(post.tijdzone, moment)));
-        rechts.appendChild(el('span', 'vlag ' + (open ? 'vlag--open' : 'vlag--dicht'), open ? 'open' : 'dicht'));
+        if (post.uren) {
+          var open = isOpen(post, moment);
+          rechts.appendChild(el('span', 'postregel-tijd', klokTekst(post.tijdzone, moment)));
+          rechts.appendChild(el('span', 'vlag ' + (open ? 'vlag--open' : 'vlag--dicht'), open ? 'open' : 'dicht'));
+        } else {
+          rechts.appendChild(el('span', 'vlag vlag--anders',
+            post.soort === 'regio' ? 'casemanager' : 'geen bijstand'));
+        }
         knop.appendChild(rechts);
         knop.addEventListener('click', function () { antwoord(stap.id, post.id); });
         lijst.appendChild(knop);
       });
 
-      var onbekend = el('button', 'postregel postregel--onbekend');
-      onbekend.type = 'button';
-      var l = el('span', 'postregel-links');
-      l.appendChild(el('span', 'postregel-land', 'Land staat er niet bij of is onbekend'));
-      l.appendChild(el('span', 'postregel-naam', 'De tool rekent de bereikbaarheid dan niet uit'));
-      onbekend.appendChild(l);
-      onbekend.addEventListener('click', function () { antwoord(stap.id, 'onbekend'); });
-      lijst.appendChild(onbekend);
+      (stap.extraRijen || []).forEach(function (rij) {
+        var knop = el('button', 'postregel postregel--extra');
+        knop.type = 'button';
+        var l = el('span', 'postregel-links');
+        l.appendChild(el('span', 'postregel-land', rij.label));
+        if (rij.toelichting) l.appendChild(el('span', 'postregel-naam', rij.toelichting));
+        knop.appendChild(l);
+        knop.addEventListener('click', function () { antwoord(stap.id, rij.waarde); });
+        lijst.appendChild(knop);
+      });
     }
 
     vulLijst();
@@ -512,13 +578,20 @@
     var kaart = el('section', 'kaart kaart--advies niveau-' + advies.niveau);
     kaart.appendChild(el('p', 'adviesmerk', niveauTekst(advies.niveau)));
     kaart.appendChild(el('h1', 'advieskop', advies.kop));
+    var punt = aanspreekpunt();
     var metWie = el('div', 'metwie');
     metWie.appendChild(el('span', 'metwie-label', 'Met wie'));
-    metWie.appendChild(el('span', 'metwie-waarde', advies.metWie));
-    if (advies.metWieLink) {
-      var linkRegel = el('span', 'metwie-link');
-      linkRegel.appendChild(link(advies.metWieLink));
-      metWie.appendChild(linkRegel);
+    metWie.appendChild(el('span', 'metwie-waarde', metWieTekst(advies, punt, f)));
+    if (!advies.metWie && punt) {
+      metWie.appendChild(el('span', 'metwie-uitleg', punt.uitleg));
+      if (punt.links.length) {
+        var linkRegel = el('span', 'metwie-link');
+        punt.links.forEach(function (l, i) {
+          if (i) linkRegel.appendChild(document.createTextNode(' \u00b7 '));
+          linkRegel.appendChild(link(l));
+        });
+        metWie.appendChild(linkRegel);
+      }
     }
     kaart.appendChild(metWie);
 
@@ -533,14 +606,14 @@
     wrap.appendChild(tekenWaarom(regel, f));
 
     var bereik = el('div', 'bereikbaarheid');
-    bereik.appendChild(tekenBereikbaarheid(D.casemanagement, 'Nederland'));
-    if ('post' in state.antwoorden) {
-      var post = zoekPost(state.antwoorden.post);
-      if (post) bereik.appendChild(tekenBereikbaarheid(post, 'Waar het overlijden was'));
-      else bereik.appendChild(tekenOnbekendePost());
+    if (punt && punt.org) bereik.appendChild(tekenBereikbaarheid(punt.org, 'Aanspreekpunt'));
+    else if (punt) bereik.appendChild(tekenGeenKantoortijden(punt));
+
+    var overlijden = plekVan('overlijdenLand');
+    var zelfdePlek = punt && (overlijden === punt.org || overlijden === punt.plek);
+    if (overlijden && !zelfdePlek) {
+      bereik.appendChild(tekenBereikbaarheid(overlijden, 'Waar het overlijden was'));
     }
-    var beller = bellerInfo();
-    if (beller && !beller.zelfde) bereik.appendChild(tekenBeller(beller));
     wrap.appendChild(bereik);
 
     var acties = el('div', 'acties');
@@ -588,6 +661,14 @@
     return doos;
   }
 
+  function metWieTekst(advies, punt, f) {
+    if (advies.metWie) return advies.metWie;
+    if (!punt) return 'Nog niet te bepalen';
+    if (advies.metWieSoort === 'dda') return punt.dda;
+    if (advies.metWieSoort === 'auto') return f.kantoortijd === 'nee' ? punt.dda : punt.naam;
+    return punt.naam;
+  }
+
   function niveauTekst(niveau) {
     if (niveau === 'direct') return 'Nu handelen';
     if (niveau === 'overleg') return 'Overleggen';
@@ -629,12 +710,17 @@
 
   function tekenBereikbaarheid(org, kopje) {
     var moment = nu();
-    var open = isOpen(org, moment);
     var kaart = el('section', 'kaart kaart--bereik');
     kaart.appendChild(el('p', 'bereik-kopje', kopje));
 
     var rij = el('div', 'bereik-rij');
     rij.appendChild(el('span', 'bereik-naam', org.naam));
+    if (!org.uren) {
+      kaart.appendChild(rij);
+      if (org.opmerking) kaart.appendChild(el('p', 'bereik-uren', org.opmerking));
+      return kaart;
+    }
+    var open = isOpen(org, moment);
     rij.appendChild(el('span', 'vlag ' + (open ? 'vlag--open' : 'vlag--dicht'), open ? 'nu open' : 'nu dicht'));
     kaart.appendChild(rij);
 
@@ -654,66 +740,32 @@
       if (org.buitenUren) kaart.appendChild(el('p', 'bereik-nood', org.buitenUren));
     }
     if (org.opmerking) kaart.appendChild(el('p', 'bereik-opmerking', org.opmerking));
-    var beller = bellerInfo();
-    if (beller && beller.zelfde && beller.post === org) {
-      kaart.appendChild(el('p', 'bereik-beller', 'De beller is daar ook.'));
-    }
     return kaart;
   }
 
-  function bellerInfo() {
-    var waarde = state.antwoorden.bellerLand;
-    if (!waarde || waarde === 'onbekend') return null;
-    if (waarde === 'nederland') return { naam: 'Nederland', tijdzone: D.casemanagement.tijdzone };
-    var post = zoekPost(waarde === 'zelfde' ? state.antwoorden.post : waarde);
-    if (!post) return null;
-    return { naam: post.land, tijdzone: post.tijdzone, post: post, zelfde: waarde === 'zelfde' };
-  }
-
-  function tekenBeller(info) {
-    var moment = nu();
+  function tekenGeenKantoortijden(punt) {
     var kaart = el('section', 'kaart kaart--bereik');
-    kaart.appendChild(el('p', 'bereik-kopje', 'Waar de beller is'));
-
+    kaart.appendChild(el('p', 'bereik-kopje', 'Aanspreekpunt'));
     var rij = el('div', 'bereik-rij');
-    rij.appendChild(el('span', 'bereik-naam', info.naam));
+    rij.appendChild(el('span', 'bereik-naam', punt.naam));
+    rij.appendChild(el('span', 'vlag vlag--anders',
+      punt.soort === 'geen-bijstand' ? 'geen consulaire bijstand' : 'kantoortijden onbekend'));
     kaart.appendChild(rij);
-    kaart.appendChild(el('p', 'bereik-tijd', 'Daar is het ' + tijdTekst(info.tijdzone, moment)));
-
-    if (info.post) {
-      var open = isOpen(info.post, moment);
-      var postRij = el('p', 'bereik-uren', info.post.naam + ' is daar nu ' + (open ? 'open' : 'dicht') + '.');
-      kaart.appendChild(postRij);
-    } else {
-      kaart.appendChild(el('p', 'bereik-uren', 'Geen post in de lijst voor dit land.'));
-    }
-    kaart.appendChild(el('p', 'bereik-opmerking',
-      'De vervolgstap hangt af van de kantoortijden bij het overlijden, niet van de klok van de beller.'));
-    return kaart;
-  }
-
-  function tekenOnbekendePost() {
-    var kaart = el('section', 'kaart kaart--bereik');
-    kaart.appendChild(el('p', 'bereik-kopje', 'In het land'));
-    var rij = el('div', 'bereik-rij');
-    rij.appendChild(el('span', 'bereik-naam', 'Post onbekend'));
-    rij.appendChild(el('span', 'vlag vlag--onbekend', 'niet uitgerekend'));
-    kaart.appendChild(rij);
-    kaart.appendChild(el('p', 'bereik-uren', 'De tool kent dit land niet, dus ze doet geen uitspraak over de openingstijd daar.'));
+    kaart.appendChild(el('p', 'bereik-uren', punt.uitleg));
     return kaart;
   }
 
   function adviesAlsTekst(regel, f) {
-    var post = 'post' in state.antwoorden ? zoekPost(state.antwoorden.post) : null;
+    var punt = aanspreekpunt();
+    var overlijden = plekVan('overlijdenLand');
     var r = [];
     r.push('Subject: Melding van overlijden - ' + regel.advies.kop);
     r.push('');
     r.push('Vervolgstap volgens de filtertool: ' + regel.advies.kop + '.');
-    r.push('Met wie: ' + regel.advies.metWie + '.');
-    var beller = bellerInfo();
+    r.push('Met wie: ' + metWieTekst(regel.advies, aanspreekpunt(), f) + '.');
     r.push('Moment: ' + tijdTekst(D.casemanagement.tijdzone, nu()) + ' (NL)' +
-      (post ? ', ter plaatse ' + tijdTekst(post.tijdzone, nu()) : '') +
-      (beller && !beller.zelfde ? ', bij de beller in ' + beller.naam + ' ' + tijdTekst(beller.tijdzone, nu()) : '') +
+      (punt && punt.org ? ', bij het aanspreekpunt ' + tijdTekst(punt.org.tijdzone, nu()) : '') +
+      (overlijden && overlijden.tijdzone ? ', waar het overlijden was ' + tijdTekst(overlijden.tijdzone, nu()) : '') +
       (state.gesimuleerd ? ' [gesimuleerd moment]' : ''));
     r.push('');
     r.push('Antwoorden:');
@@ -783,7 +835,7 @@
   function bereikbaarheidsVingerafdruk() {
     var moment = nu();
     return [isOpen(D.casemanagement, moment)].concat(D.posten.map(function (p) {
-      return isOpen(p, moment) ? 1 : 0;
+      return p.uren && isOpen(p, moment) ? 1 : 0;
     })).join('');
   }
 
