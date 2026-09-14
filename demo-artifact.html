@@ -1,0 +1,24 @@
+<!--
+  Wrapper om precies hetzelfde scherm als index.html te publiceren als
+  Claude Artifact (een deelbare link voor een demo). De publicatie zet
+  assets/ en data/ op dezelfde relatieve paden, dus dit bestand gebruikt
+  dezelfde verwijzingen als index.html. Wijzig de tool niet hier — dit is
+  alleen de omslag.
+-->
+<title>Filtertool melding van overlijden</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=Source+Serif+4:opsz,wght@8..60,600&display=swap">
+<link rel="stylesheet" href="assets/styles.css">
+
+<div id="app"></div>
+<noscript>
+  <p style="max-width:640px;margin:32px auto;padding:0 16px">
+    Deze filtertool werkt alleen met JavaScript aan. Zonder JavaScript kan de
+    tool niet uitrekenen hoe laat het bij de post is.
+  </p>
+</noscript>
+
+<script src="data/posten.js"></script>
+<script src="data/beslislogica.js"></script>
+<script src="assets/app.js"></script>

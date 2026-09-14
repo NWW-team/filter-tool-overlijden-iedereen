@@ -17,6 +17,10 @@ Open `index.html` in een browser. Er is geen build, geen installatie en geen
 server nodig; de tool is gewone HTML, CSS en JavaScript. Wil je hem delen, zet
 het mapje dan op GitHub Pages (Settings → Pages → branch, map `/`).
 
+`demo-artifact.html` is dezelfde tool in een omslag om als deelbare demopagina
+te publiceren. Alleen de omslag verschilt; de tool zelf staat in `assets/` en
+`data/` en wordt door beide pagina's gebruikt.
+
 ## Wat de tool doet
 
 * **Eén vraag tegelijk.** Drie tot vier vragen, met de cijfertoetsen te
@@ -41,6 +45,7 @@ het mapje dan op GitHub Pages (Settings → Pages → branch, map `/`).
 
 ```
 index.html              het scherm (leeg; de tool bouwt zichzelf op)
+demo-artifact.html      dezelfde tool, als deelbare demopagina
 assets/app.js           de motor: vragen stellen, regels toepassen, tekenen
 assets/styles.css       vormgeving, licht en donker
 data/beslislogica.js    de vragen en de regels  ← hier past de instructie in

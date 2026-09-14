@@ -22,7 +22,8 @@
   --geen-zacht: #e6f3ec;
   --schaduw: 0 1px 2px rgba(16, 24, 40, .06), 0 8px 24px rgba(16, 24, 40, .06);
   --rond: 12px;
-  --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-ui: "Source Sans 3", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-kop: "Source Serif 4", Georgia, "Times New Roman", serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -74,7 +75,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--tekst);
-  font-family: var(--font);
+  font-family: var(--font-ui);
   font-size: 16px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -182,7 +183,15 @@ body {
   text-transform: uppercase;
   color: var(--tekst-zacht);
 }
-.vraag { margin: 0; font-size: 25px; line-height: 1.25; letter-spacing: -.02em; }
+.vraag {
+  margin: 0;
+  font-family: var(--font-kop);
+  font-size: 27px;
+  font-weight: 600;
+  line-height: 1.22;
+  letter-spacing: -.01em;
+  text-wrap: balance;
+}
 .hint { margin: 8px 0 0; color: var(--tekst-zacht); font-size: 14px; }
 
 /* ---------------------------------------------------------------- opties */
@@ -293,7 +302,15 @@ body {
 .niveau-overleg .adviesmerk { color: var(--overleg); }
 .niveau-geen .adviesmerk { color: var(--geen); }
 
-.advieskop { margin: 0; font-size: 30px; line-height: 1.15; letter-spacing: -.025em; }
+.advieskop {
+  margin: 0;
+  font-family: var(--font-kop);
+  font-size: 33px;
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -.015em;
+  text-wrap: balance;
+}
 
 .metwie {
   display: flex;
@@ -378,8 +395,8 @@ body {
 .voet-bron { margin: 4px 0 0; font-size: 12.5px; color: var(--tekst-zacht); }
 
 @media (max-width: 480px) {
-  .vraag { font-size: 22px; }
-  .advieskop { font-size: 25px; }
+  .vraag { font-size: 23px; }
+  .advieskop { font-size: 27px; }
   .kaart { padding: 18px 16px; }
   .optie-nummer { display: none; }
 }
