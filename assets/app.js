@@ -126,13 +126,9 @@
   function feiten() {
     var f = {};
     for (var k in state.antwoorden) f[k] = state.antwoorden[k];
-    var moment = nu();
-    f.nlKantoortijd = isOpen(D.casemanagement, moment) ? 'ja' : 'nee';
-    if (!('post' in state.antwoorden)) {
-      f.postOpen = 'nvt';
-    } else {
+    if ('post' in state.antwoorden) {
       var post = zoekPost(state.antwoorden.post);
-      f.postOpen = !post ? 'onbekend' : (isOpen(post, moment) ? 'ja' : 'nee');
+      f.lokaleKantoortijd = !post ? 'onbekend' : (isOpen(post, nu()) ? 'ja' : 'nee');
     }
     return f;
   }
@@ -326,6 +322,60 @@
     return spoor;
   }
 
+  /* ------------------------------------------------------------ startscherm */
+
+  function tekenStartBoven() {
+    var s = L.start;
+    var doos = el('div', 'startboven');
+    if (s.waarschuwing) doos.appendChild(el('p', 'startwaarschuwing', s.waarschuwing));
+    if (s.positie) doos.appendChild(el('p', 'startpositie', s.positie));
+    return doos;
+  }
+
+  function tekenStartOnder() {
+    var s = L.start;
+    var doos = el('div', 'startonder');
+
+    if (s.kanalen && s.kanalen.length) {
+      var kanalen = el('p', 'startkanalen');
+      s.kanalen.forEach(function (k) {
+        var regel = el('span', 'kanaal');
+        regel.appendChild(document.createTextNode(k.tekst + ' '));
+        regel.appendChild(link(k.link));
+        kanalen.appendChild(regel);
+      });
+      doos.appendChild(kanalen);
+    }
+
+    if (s.checkvragen && s.checkvragen.length) {
+      var uitklap = document.createElement('details');
+      uitklap.className = 'checkvragen';
+      var kop = document.createElement('summary');
+      kop.textContent = s.checkvragenKop;
+      uitklap.appendChild(kop);
+      if (s.checkvragenUitleg) uitklap.appendChild(el('p', 'checkvragen-uitleg', s.checkvragenUitleg));
+      var lijst = el('ul', 'checkvragen-lijst');
+      s.checkvragen.forEach(function (v) { lijst.appendChild(el('li', null, v)); });
+      uitklap.appendChild(lijst);
+      if (s.checkvragenLink) {
+        var p = el('p', 'checkvragen-link');
+        p.appendChild(link(s.checkvragenLink));
+        uitklap.appendChild(p);
+      }
+      doos.appendChild(uitklap);
+    }
+    return doos;
+  }
+
+  function link(gegevens) {
+    var a = document.createElement('a');
+    a.href = gegevens.url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.textContent = gegevens.tekst;
+    return a;
+  }
+
   /* ---------------------------------------------------------------- vragen */
 
   function tekenVraag(stap) {
@@ -433,9 +483,14 @@
     var kaart = el('section', 'kaart kaart--advies niveau-' + advies.niveau);
     kaart.appendChild(el('p', 'adviesmerk', niveauTekst(advies.niveau)));
     kaart.appendChild(el('h1', 'advieskop', advies.kop));
-    var metWie = el('p', 'metwie');
+    var metWie = el('div', 'metwie');
     metWie.appendChild(el('span', 'metwie-label', 'Met wie'));
     metWie.appendChild(el('span', 'metwie-waarde', advies.metWie));
+    if (advies.metWieLink) {
+      var linkRegel = el('span', 'metwie-link');
+      linkRegel.appendChild(link(advies.metWieLink));
+      metWie.appendChild(linkRegel);
+    }
     kaart.appendChild(metWie);
 
     if (advies.stappen && advies.stappen.length) {
@@ -445,6 +500,7 @@
     }
     wrap.appendChild(kaart);
 
+    if (advies.anders && advies.anders.length) wrap.appendChild(tekenAnders(advies.anders));
     wrap.appendChild(tekenWaarom(regel, f));
 
     var bereik = el('div', 'bereikbaarheid');
@@ -467,11 +523,11 @@
     terugKnop.addEventListener('click', terug);
     acties.appendChild(terugKnop);
 
-    var kopieer = el('button', 'knop knop--stil', 'Kopieer voor het dossier');
+    var kopieer = el('button', 'knop knop--stil', 'Kopieer notitie voor Hermes');
     kopieer.type = 'button';
     kopieer.addEventListener('click', function () {
       var tekst = adviesAlsTekst(regel, f);
-      var klaar = function () { kopieer.textContent = 'Gekopieerd'; setTimeout(function () { kopieer.textContent = 'Kopieer voor het dossier'; }, 1800); };
+      var klaar = function () { kopieer.textContent = 'Gekopieerd'; setTimeout(function () { kopieer.textContent = 'Kopieer notitie voor Hermes'; }, 1800); };
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(tekst).then(klaar, function () { window.prompt('Kopieer met Ctrl/Cmd + C', tekst); });
       } else {
@@ -482,6 +538,23 @@
     wrap.appendChild(acties);
 
     return wrap;
+  }
+
+  function tekenAnders(anders) {
+    var doos = el('section', 'kaart kaart--anders');
+    doos.appendChild(el('h2', 'kaartkop', 'Loopt het anders?'));
+    var lijst = el('dl', 'anderslijst');
+    anders.forEach(function (geval) {
+      lijst.appendChild(el('dt', null, geval.vraag));
+      var dd = el('dd', null, geval.antwoord);
+      if (geval.link) {
+        dd.appendChild(document.createTextNode(' '));
+        dd.appendChild(link(geval.link));
+      }
+      lijst.appendChild(dd);
+    });
+    doos.appendChild(lijst);
+    return doos;
   }
 
   function niveauTekst(niveau) {
@@ -504,8 +577,8 @@
       lijst.appendChild(feitRegel(stap ? stap.vraag : stapId, labelVanStap(stapId)));
     });
 
-    ['nlKantoortijd', 'postOpen'].forEach(function (sleutel) {
-      if (f[sleutel] === 'nvt' || f[sleutel] === undefined) return;
+    (L.toonFeiten || []).forEach(function (sleutel) {
+      if (f[sleutel] === undefined) return;
       var meta = L.feitLabels[sleutel];
       lijst.appendChild(feitRegel(meta.label, meta.waardes[f[sleutel]] || f[sleutel]));
     });
@@ -565,33 +638,37 @@
   }
 
   function adviesAlsTekst(regel, f) {
-    var regels = [];
-    regels.push('Filtertool melding van overlijden — ' + regel.advies.kop);
-    regels.push('Met wie: ' + regel.advies.metWie);
-    regels.push('Moment: ' + tijdTekst(D.casemanagement.tijdzone, nu()) + ' (Nederlandse tijd)' + (state.gesimuleerd ? ' [gesimuleerd]' : ''));
-    regels.push('');
-    regels.push('Antwoorden:');
+    var post = 'post' in state.antwoorden ? zoekPost(state.antwoorden.post) : null;
+    var r = [];
+    r.push('Subject: Melding van overlijden - ' + regel.advies.kop);
+    r.push('');
+    r.push('Vervolgstap volgens de filtertool: ' + regel.advies.kop + '.');
+    r.push('Met wie: ' + regel.advies.metWie + '.');
+    r.push('Moment: ' + tijdTekst(D.casemanagement.tijdzone, nu()) + ' (NL)' +
+      (post ? ', ter plaatse ' + tijdTekst(post.tijdzone, nu()) : '') +
+      (state.gesimuleerd ? ' [gesimuleerd moment]' : ''));
+    r.push('');
+    r.push('Antwoorden:');
     state.volgorde.forEach(function (stapId) {
       var stap = L.stappen.filter(function (s) { return s.id === stapId; })[0];
-      regels.push('- ' + (stap ? stap.vraag : stapId) + ' ' + labelVanStap(stapId));
+      r.push('- ' + (stap ? stap.vraag : stapId) + ' ' + labelVanStap(stapId));
     });
-    ['nlKantoortijd', 'postOpen'].forEach(function (sleutel) {
-      if (f[sleutel] === 'nvt' || f[sleutel] === undefined) return;
-      regels.push('- ' + L.feitLabels[sleutel].label + ': ' + (L.feitLabels[sleutel].waardes[f[sleutel]] || f[sleutel]));
+    (L.toonFeiten || []).forEach(function (sleutel) {
+      if (f[sleutel] === undefined) return;
+      r.push('- ' + L.feitLabels[sleutel].label + ': ' +
+        (L.feitLabels[sleutel].waardes[f[sleutel]] || f[sleutel]));
     });
-    regels.push('');
-    regels.push('Regel: ' + regel.naam + ' (' + regel.grondslag + ', logica ' + L.versie + ')');
-    regels.push('Let op: voorbeeldlogica, geen beleid.');
-    return regels.join('\n');
+    r.push('');
+    r.push('Regel: ' + regel.naam + ' (' + regel.grondslag + ', filtertool ' + L.versie + ')');
+    return r.join('\n');
   }
 
   /* ------------------------------------------------------------------ voet */
 
   function tekenVoet() {
     var voet = el('footer', 'voet');
-    voet.appendChild(el('p', 'waarschuwing',
-      'Prototype met voorbeeldlogica en voorbeeldopeningstijden. Geen beleid — gebruik dit niet voor echte meldingen.'));
-    voet.appendChild(el('p', 'voet-bron', L.bron));
+    if (D.waarschuwing) voet.appendChild(el('p', 'waarschuwing', D.waarschuwing));
+    voet.appendChild(el('p', 'voet-bron', 'Volgt: ' + L.bron + ' · filtertool ' + L.versie + ', bijgewerkt ' + L.bijgewerkt));
     return voet;
   }
 
@@ -607,7 +684,14 @@
     if (spoor) hoofd.appendChild(spoor);
 
     var stap = volgendeStap();
-    hoofd.appendChild(stap ? tekenVraag(stap) : tekenUitkomst());
+    if (stap) {
+      var beginscherm = !state.volgorde.length;
+      if (beginscherm) hoofd.appendChild(tekenStartBoven());
+      hoofd.appendChild(tekenVraag(stap));
+      if (beginscherm) hoofd.appendChild(tekenStartOnder());
+    } else {
+      hoofd.appendChild(tekenUitkomst());
+    }
     app.appendChild(hoofd);
     app.appendChild(tekenVoet());
   }

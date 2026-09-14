@@ -127,5 +127,11 @@ window.FILTERDATA = (function () {
     buitenUren: 'Buiten kantoortijd: dienstdoend consulair medewerker via de 24/7-lijn.'
   };
 
-  return { posten: posten, casemanagement: casemanagement };
+  return {
+    posten: posten,
+    casemanagement: casemanagement,
+    /* Verwijder deze regel zodra de echte postenlijst erin staat; hij staat
+     * dan ook niet meer onderaan het scherm. */
+    waarschuwing: 'De openingstijden en werkweken in deze tool zijn voorbeelden, nog niet de echte postgegevens. "Binnen of buiten lokale kantoortijden" is daarmee nu een aanname.'
+  };
 })();

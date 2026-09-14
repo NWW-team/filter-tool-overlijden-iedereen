@@ -1,9 +1,10 @@
 /*
  * Beslislogica van de filtertool.
  *
- * LET OP: dit is VOORBEELDLOGICA, geen beleid. Ze is gemaakt om de vorm van
- * de tool te kunnen laten zien. Vervang de vragen en regels hieronder door de
- * uitgeschreven werkinstructie voordat iemand hier een besluit op baseert.
+ * Bron: WI: Overlijden, stap 4 — "Bepaal de vervolgstap: overleggen of later
+ * terugbellen". De filter dekt alleen die stap. Stap 1 t/m 3 (checkvragen,
+ * zoeken in Hermes, case aanmaken of aanvullen) doet de voorlichter ervoor,
+ * stap 5 (afronding noteren) erna.
  *
  * De logica bestaat uit twee delen:
  *
@@ -13,307 +14,279 @@
  *
  *  2. regels — van boven naar beneden doorlopen; de eerste regel die past,
  *     geeft het advies. De laatste regel heeft geen voorwaarde en vangt alles
- *     op wat de logica niet dekt.
+ *     op wat de instructie niet dekt.
  *
  * Een voorwaarde is een object: elke sleutel moet kloppen (EN), elke lijst met
  * waarden is een keuze (OF). Bijvoorbeeld:
- *     { situatie: ['nieuw'], urgentie: ['ja', 'onbekend'], postOpen: ['nee'] }
+ *     { begraven: ['ja'], lokaleKantoortijd: ['nee'] }
  *
  * Staat er een lijst van zulke objecten, dan hoeft er maar één te kloppen:
- *     [ { situatie: ['bijzonder'] }, { situatie: ['nieuw'], urgentie: ['ja'] } ]
+ *     [ { melder: ['autoriteiten'] }, { begraven: ['onbekend'] } ]
  *
- * Naast de antwoorden kun je twee afgeleide feiten gebruiken, die de tool zelf
+ * Naast de antwoorden kun je één afgeleid feit gebruiken, dat de tool zelf
  * uitrekent uit de klok en de postenlijst:
- *     postOpen        — 'ja' | 'nee' | 'onbekend' | 'nvt'
- *     nlKantoortijd   — 'ja' | 'nee'
+ *     lokaleKantoortijd — 'ja' | 'nee' | 'onbekend'
+ *
+ * LET OP: de openingstijden in data/posten.js zijn nog voorbeelden. Daarmee is
+ * "lokale kantoortijd" nu een aanname, niet een feit.
  */
 window.FILTERLOGICA = (function () {
   'use strict';
 
+  var WI = 'https://voorlichting.nederlandwereldwijd.nl/voorlichting/werkinstructies-consulaire-bijstand/';
+
+  var LINK = {
+    overleg: WI + 'overleg-met-post-of-casemanagement',
+    nietBereikbaar: WI + 'collega-niet-bereikbaar-voor-een-consulair-geval',
+    bijstand: WI + 'aanmerking-consulaire-bijstand',
+    whatsapp: WI + 'hulpvraag-via-whatsapp',
+    email: WI + 'hulpvraag-via-email'
+  };
+
+  /* De twee zijpaden die de instructie onder stap 4 noemt. */
+  var TWIJFEL = {
+    vraag: 'Ik twijfel om de DDA te bellen',
+    antwoord: 'Overleg eerst met de vraagbaak. Is er geen vraagbaak? Overleg dan met je directe collega’s en besluit samen of je de DDA van de post of van casemanagement belt.'
+  };
+
+  var NIEMAND = {
+    vraag: 'Ik krijg niemand aan de telefoon',
+    antwoord: 'Volg de werkinstructie voor een onbereikbare collega.',
+    link: { tekst: 'WI: Collega niet bereikbaar', url: LINK.nietBereikbaar }
+  };
+
+  var NOTEER = 'Noteer in de Communication-tab van Hermes hoe je het gesprek hebt afgerond (stap 5).';
+
   var stappen = [
     {
-      id: 'situatie',
+      id: 'melder',
       type: 'keuze',
-      vraag: 'Waarover belt de melder?',
-      hint: 'Kies wat er het dichtst bij komt. Twijfel je tussen twee opties, kies dan de zwaarste.',
+      vraag: 'Van wie komt de melding?',
+      hint: 'Een melding van de lokale autoriteiten volgt een eigen route.',
       opties: [
-        { waarde: 'nieuw', label: 'Nieuwe melding van een overlijden', toelichting: 'Een Nederlander is in het buitenland overleden en dat is bij ons nog niet bekend.' },
-        { waarde: 'vervolg', label: 'Vraag over een overlijden dat al bekend is', toelichting: 'Er loopt al een dossier of er is al een casemanager op gezet.' },
-        { waarde: 'niet-nl', label: 'Overledene is geen Nederlander', toelichting: 'Geen Nederlandse nationaliteit en geen dubbele nationaliteit.' },
-        { waarde: 'bijzonder', label: 'Bijzondere omstandigheden', toelichting: 'Misdrijf, vermissing, minderjarige, groepsongeval of media-aandacht.' }
+        { waarde: 'anders', label: 'Van een nabestaande of andere melder', toelichting: 'Familie, reisgenoot, werkgever of reisorganisatie.' },
+        { waarde: 'autoriteiten', label: 'Van de lokale autoriteiten', toelichting: 'De melding komt uit het land zelf.' }
       ]
     },
     {
-      id: 'urgentie',
+      id: 'begraven',
       type: 'keuze',
-      als: { situatie: ['nieuw'] },
-      vraag: 'Moet er binnen 24 uur een onomkeerbare beslissing vallen?',
-      hint: 'Denk aan een begrafenis volgens lokaal gebruik, sectie, identificatie of vervoer van het lichaam.',
+      als: { melder: ['anders'] },
+      vraag: 'Is de persoon al begraven of gecremeerd?',
+      hint: 'Checkvraag uit stap 1. Hier splitst de instructie de route.',
       opties: [
-        { waarde: 'ja', label: 'Ja', toelichting: 'Er ligt nu een beslissing die niet kan wachten.' },
-        { waarde: 'nee', label: 'Nee, er is tijd', toelichting: 'Niets hoeft vandaag onomkeerbaar te gebeuren.' },
-        { waarde: 'onbekend', label: 'Weet ik niet', toelichting: 'De tool behandelt dit verder als urgent.' }
-      ]
-    },
-    {
-      id: 'nabestaanden',
-      type: 'keuze',
-      als: { situatie: ['nieuw'], urgentie: ['nee'] },
-      vraag: 'Zijn er nabestaanden ter plaatse die nu hulp nodig hebben?',
-      hint: 'Bijvoorbeeld een reisgenoot of familielid dat in het land achterblijft.',
-      opties: [
-        { waarde: 'ja', label: 'Ja, iemand ter plaatse heeft hulp nodig' },
-        { waarde: 'nee', label: 'Nee, de melder belt vanuit Nederland of redt zich' }
+        { waarde: 'nee', label: 'Nee, nog niet', toelichting: 'Recent overleden.' },
+        { waarde: 'ja', label: 'Ja, al begraven of gecremeerd' },
+        { waarde: 'onbekend', label: 'Weet ik niet' }
       ]
     },
     {
       id: 'post',
       type: 'post',
-      /* Alleen vragen als het antwoord het advies kan veranderen: bij een
-       * rustige melding zonder nabestaanden ter plaatse doet het land niet
-       * mee, en dan scheelt dat een vraag in de wachtstand. */
-      als: [
-        { situatie: ['bijzonder'] },
-        { situatie: ['nieuw'], urgentie: ['ja', 'onbekend'] },
-        { situatie: ['nieuw'], urgentie: ['nee'], nabestaanden: ['ja'] }
-      ],
-      vraag: 'In welk land is de klant?',
-      hint: 'Je ziet meteen hoe laat het daar is en of de post nu open is.'
+      /* Niet vragen als de route al vastligt zonder het land: bij "weet ik
+       * niet" over begraven of gecremeerd wijst de instructie sowieso naar
+       * de twijfelroute. */
+      als: [{ melder: ['autoriteiten'] }, { begraven: ['nee', 'ja'] }],
+      vraag: 'In welk land is de persoon overleden?',
+      hint: 'Je ziet meteen hoe laat het daar is en of het daar kantoortijd is.'
+    },
+    {
+      id: 'familie',
+      type: 'keuze',
+      /* Alleen nodig in de tak waar de instructie erop splitst. */
+      als: { melder: ['anders'], begraven: ['ja'], lokaleKantoortijd: ['nee'] },
+      vraag: 'Zijn de directe nabestaanden al op de hoogte?',
+      hint: 'Partner, kinderen of andere directe familie.',
+      opties: [
+        { waarde: 'ja', label: 'Ja, de familie weet het' },
+        { waarde: 'nee', label: 'Nee, nog niet' },
+        { waarde: 'onbekend', label: 'Weet ik niet' }
+      ]
     }
   ];
 
-  /* Hoe de tool feiten in het scherm benoemt bij "Waarom dit advies". */
+  /* Wat er op het startscherm staat, uit de kop en stap 1 van de instructie. */
+  var start = {
+    waarschuwing: 'Voorlichters van SOS mogen geen vragen over dit onderwerp beantwoorden.',
+    positie: 'Deze filter is stap 4 van de werkinstructie. Stap 1 t/m 3 — checkvragen, zoeken in Hermes, case aanmaken of aanvullen — doe je hiervoor.',
+    kanalen: [
+      { tekst: 'Komt het verzoek via WhatsApp?', link: { tekst: 'WhatsApp-instructie', url: LINK.whatsapp } },
+      { tekst: 'Komt het verzoek via e-mail?', link: { tekst: 'E-mailinstructie', url: LINK.email } }
+    ],
+    checkvragenKop: 'Checkvragen bij de hand (stap 1)',
+    checkvragenUitleg: 'Hulpmiddel — je hoeft ze niet allemaal te stellen.',
+    checkvragen: [
+      'Wat is uw relatie tot de overledene?',
+      'Wat is de naam van de overleden persoon? Spel met het telefoonalfabet en controleer het voorvoegsel (Da Costa of Dacosta?).',
+      'Wat is uw naam, telefoonnummer en e-mailadres?',
+      'Zijn er andere directe nabestaanden (partner, kinderen) op de hoogte? Zijn zij ter plaatse?',
+      'Wat is de geboortedatum van de overleden persoon?',
+      'In welk land en welke plaats is de persoon overleden?',
+      'Wanneer is de persoon overleden?',
+      'Weet u waar het lichaam nu is (ziekenhuis, mortuarium)?',
+      'Is de persoon al begraven of gecremeerd?'
+    ],
+    checkvragenLink: { tekst: 'Check of de AP in aanmerking komt voor consulair maatschappelijke bijstand', url: LINK.bijstand }
+  };
+
+  /* Welke afgeleide feiten onder "Waarom dit advies" komen te staan. */
+  var toonFeiten = ['lokaleKantoortijd'];
+
   var feitLabels = {
-    postOpen: {
-      label: 'Bereikbaarheid van de post',
+    lokaleKantoortijd: {
+      label: 'Lokale kantoortijd',
       waardes: {
-        ja: 'de post is nu open',
-        nee: 'de post is nu dicht',
-        onbekend: 'bereikbaarheid onbekend',
-        nvt: 'niet van toepassing'
+        ja: 'binnen lokale kantoortijden',
+        nee: 'buiten lokale kantoortijden',
+        onbekend: 'onbekend — land niet in de lijst'
       }
-    },
-    nlKantoortijd: {
-      label: 'Moment in Nederland',
-      waardes: { ja: 'binnen kantoortijd', nee: 'buiten kantoortijd' }
     }
   };
 
   var regels = [
     {
-      id: 'bijzonder-kantoortijd',
-      naam: 'Bijzondere omstandigheden, binnen Nederlandse kantoortijd',
-      grondslag: 'Voorbeeldinstructie §1.1',
-      wanneer: { situatie: ['bijzonder'], nlKantoortijd: ['ja'] },
+      id: 'lokale-autoriteiten',
+      naam: 'Melding van lokale autoriteiten',
+      grondslag: 'Stap 4 — Melding van lokale autoriteiten',
+      wanneer: { melder: ['autoriteiten'] },
       advies: {
         niveau: 'direct',
-        kop: 'Direct overleggen',
-        metWie: 'Casemanagement consulaire zaken',
+        kop: 'Altijd overleggen',
+        metWie: 'De post of casemanagement — ook buiten reguliere kantoortijden',
+        metWieLink: { tekst: 'Bekijk met wie je overlegt', url: LINK.overleg },
         stappen: [
-          'Zet de beller in de wacht en bel casemanagement nu.',
-          'Zeg niets toe over onderzoek, repatriëring of woordvoering.',
-          'Leg vast wie er belde, met welk nummer je kunt terugbellen.'
+          'Vraag of je de beller in de wacht mag zetten en zeg dat je gaat overleggen met een collega.',
+          'Overleg met de post of casemanagement.',
+          NOTEER
         ],
-        toelichting: 'Bij een misdrijf, vermissing, minderjarige, groepsongeval of media-aandacht beslist de voorlichter nooit zelf, ook niet als de post open is.'
+        toelichting: 'Bij een melding van de lokale autoriteiten overleg je altijd, ongeacht het tijdstip.',
+        anders: [NIEMAND]
       }
     },
     {
-      id: 'bijzonder-buiten-kantoortijd',
-      naam: 'Bijzondere omstandigheden, buiten Nederlandse kantoortijd',
-      grondslag: 'Voorbeeldinstructie §1.2',
-      wanneer: { situatie: ['bijzonder'], nlKantoortijd: ['nee'] },
+      id: 'recent-binnen-kantoortijd',
+      naam: 'Recent overleden, binnen lokale kantoortijden',
+      grondslag: 'Stap 4 — Recent overleden, tijdens lokale kantoortijden',
+      wanneer: { melder: ['anders'], begraven: ['nee'], lokaleKantoortijd: ['ja'] },
+      advies: {
+        niveau: 'overleg',
+        kop: 'Overleggen met de post of casemanagement',
+        metWie: 'De post of casemanagement',
+        metWieLink: { tekst: 'Bekijk met wie je overlegt', url: LINK.overleg },
+        stappen: [
+          'Vraag of je de beller in de wacht mag zetten en zeg dat je gaat overleggen met een collega.',
+          'Overleg met de post of casemanagement.',
+          NOTEER
+        ],
+        anders: [NIEMAND]
+      }
+    },
+    {
+      id: 'recent-buiten-kantoortijd',
+      naam: 'Recent overleden, buiten lokale kantoortijden',
+      grondslag: 'Stap 4 — Recent overleden, buiten lokale kantoortijden',
+      wanneer: { melder: ['anders'], begraven: ['nee'], lokaleKantoortijd: ['nee'] },
       advies: {
         niveau: 'direct',
-        kop: 'Direct overleggen',
-        metWie: 'Dienstdoend consulair medewerker (24/7-lijn)',
+        kop: 'Overleggen met de DDA',
+        metWie: 'De DDA van de post of van casemanagement',
+        metWieLink: { tekst: 'Bekijk met welke DDA je overlegt', url: LINK.overleg },
         stappen: [
-          'Bel de dienstdoend medewerker; wacht niet tot de volgende werkdag.',
-          'Zeg niets toe over onderzoek, repatriëring of woordvoering.',
-          'Leg vast wie er belde, met welk nummer je kunt terugbellen.'
+          'Vraag of je de beller in de wacht mag zetten en zeg dat je gaat overleggen met een collega.',
+          'Overleg met de DDA van de post of van casemanagement.',
+          NOTEER
         ],
-        toelichting: 'Deze categorie wacht niet op kantoortijd. Of de post open is, doet hier niet ter zake.'
+        toelichting: 'De persoon is nog niet begraven of gecremeerd; dat wacht niet tot de post weer opengaat.',
+        anders: [TWIJFEL, NIEMAND]
       }
     },
     {
-      id: 'geen-nederlander',
-      naam: 'Overledene is geen Nederlander',
-      grondslag: 'Voorbeeldinstructie §2.1',
-      wanneer: { situatie: ['niet-nl'] },
-      advies: {
-        niveau: 'geen',
-        kop: 'Geen overleg nodig',
-        metWie: 'Niemand — je handelt dit zelf af',
-        stappen: [
-          'Leg uit dat er geen Nederlandse consulaire taak is.',
-          'Verwijs naar de lokale autoriteiten, de reisverzekeraar en de uitvaartonderneming.',
-          'Leg de melding kort vast.'
-        ],
-        toelichting: 'Twijfel je over de nationaliteit of hoor je later over een verblijfsstatus of dubbele nationaliteit? Loop de filter dan opnieuw door.'
-      }
-    },
-    {
-      id: 'vervolg-kantoortijd',
-      naam: 'Vraag over een bekend dossier, binnen Nederlandse kantoortijd',
-      grondslag: 'Voorbeeldinstructie §2.2',
-      wanneer: { situatie: ['vervolg'], nlKantoortijd: ['ja'] },
-      advies: {
-        niveau: 'geen',
-        kop: 'Geen overleg nodig',
-        metWie: 'Verbind door met de behandelend casemanager',
-        stappen: [
-          'Zoek het dossier op en verbind door met de casemanager die erop zit.',
-          'Is die er niet, noteer de vraag en laat terugbellen binnen de werkdag.'
-        ],
-        toelichting: 'Doorverbinden is geen overleg: je hoeft de vraag niet eerst zelf te wegen.'
-      }
-    },
-    {
-      id: 'vervolg-buiten-kantoortijd',
-      naam: 'Vraag over een bekend dossier, buiten Nederlandse kantoortijd',
-      grondslag: 'Voorbeeldinstructie §2.3',
-      wanneer: { situatie: ['vervolg'], nlKantoortijd: ['nee'] },
-      advies: {
-        niveau: 'geen',
-        kop: 'Geen overleg nodig',
-        metWie: 'Niemand — de casemanager pakt het op',
-        stappen: [
-          'Noteer de vraag in het dossier.',
-          'Zeg toe dat de casemanager op de eerstvolgende werkdag terugbelt.'
-        ],
-        toelichting: 'Hoor je nieuwe feiten die de situatie urgent maken, begin de filter dan opnieuw met "Nieuwe melding".'
-      }
-    },
-    {
-      id: 'urgent-post-open',
-      naam: 'Urgent en de post is open',
-      grondslag: 'Voorbeeldinstructie §3.1',
-      wanneer: { situatie: ['nieuw'], urgentie: ['ja', 'onbekend'], postOpen: ['ja'] },
+      id: 'begraven-binnen-kantoortijd',
+      naam: 'Al begraven of gecremeerd, binnen lokale kantoortijden',
+      grondslag: 'Stap 4 — Persoon is al begraven/gecremeerd, tijdens lokale kantoortijden',
+      wanneer: { melder: ['anders'], begraven: ['ja'], lokaleKantoortijd: ['ja'] },
       advies: {
         niveau: 'overleg',
-        kop: 'Overleggen met de post',
-        metWie: 'De post in het land zelf',
+        kop: 'Overleggen met de post of casemanagement',
+        metWie: 'De post of casemanagement',
+        metWieLink: { tekst: 'Bekijk met wie je overlegt', url: LINK.overleg },
         stappen: [
-          'Bel de post nu; die kan ter plaatse handelen.',
-          'Geef door: naam en geboortedatum, plaats van overlijden, contactgegevens van de melder.',
-          'Leg de melding vast; casemanagement pakt het op tijdens Nederlandse kantoortijd.'
+          'Vraag of je de beller in de wacht mag zetten en zeg dat je gaat overleggen met een collega.',
+          'Overleg met de post of casemanagement.',
+          NOTEER
         ],
-        toelichting: 'De post is open en kan dit zelf. Casemanagement hoeft er nu niet bij.'
+        anders: [NIEMAND]
       }
     },
     {
-      id: 'urgent-post-dicht-kantoortijd',
-      naam: 'Urgent, post dicht, binnen Nederlandse kantoortijd',
-      grondslag: 'Voorbeeldinstructie §3.2',
-      wanneer: { situatie: ['nieuw'], urgentie: ['ja', 'onbekend'], postOpen: ['nee'], nlKantoortijd: ['ja'] },
-      advies: {
-        niveau: 'overleg',
-        kop: 'Overleggen met casemanagement',
-        metWie: 'Casemanagement consulaire zaken',
-        stappen: [
-          'Bel casemanagement; zij beslissen of de post buiten openingstijd wordt gewekt.',
-          'Geef door: naam en geboortedatum, plaats van overlijden, contactgegevens van de melder.',
-          'Noem erbij hoe laat de post weer opengaat (zie het kader hieronder).'
-        ],
-        toelichting: 'Niet zelf de post proberen te bereiken: buiten openingstijd loopt dat via casemanagement.'
-      }
-    },
-    {
-      id: 'urgent-post-dicht-buiten-kantoortijd',
-      naam: 'Urgent, post dicht, buiten Nederlandse kantoortijd',
-      grondslag: 'Voorbeeldinstructie §3.3',
-      wanneer: { situatie: ['nieuw'], urgentie: ['ja', 'onbekend'], postOpen: ['nee'], nlKantoortijd: ['nee'] },
+      id: 'begraven-buiten-kantoortijd-familie-onwetend',
+      naam: 'Al begraven of gecremeerd, buiten lokale kantoortijden, familie nog niet op de hoogte',
+      grondslag: 'Stap 4 — Persoon is al begraven/gecremeerd, buiten lokale kantoortijden',
+      wanneer: { melder: ['anders'], begraven: ['ja'], lokaleKantoortijd: ['nee'], familie: ['nee', 'onbekend'] },
       advies: {
         niveau: 'direct',
-        kop: 'Direct overleggen',
-        metWie: 'Dienstdoend consulair medewerker (24/7-lijn)',
+        kop: 'Overleggen met de DDA',
+        metWie: 'De DDA van de post of van casemanagement',
+        metWieLink: { tekst: 'Bekijk met welke DDA je overlegt', url: LINK.overleg },
         stappen: [
-          'Bel de dienstdoend medewerker; niemand anders is nu bereikbaar.',
-          'Geef door: naam en geboortedatum, plaats van overlijden, contactgegevens van de melder.',
-          'Noem erbij hoe laat de post weer opengaat (zie het kader hieronder).'
+          'Vraag of je de beller in de wacht mag zetten en zeg dat je gaat overleggen met een collega.',
+          'Overleg met de DDA van de post of van casemanagement.',
+          NOTEER
         ],
-        toelichting: 'Zowel de post als casemanagement is nu dicht, en de zaak kan niet wachten.'
+        toelichting: 'Uitstel tot de volgende werkdag mag alleen als je wéét dat de familie al op de hoogte is. Weet je dat niet zeker, dan volgt de tool deze tak.',
+        anders: [TWIJFEL, NIEMAND]
       }
     },
     {
-      id: 'urgent-post-onbekend-kantoortijd',
-      naam: 'Urgent, bereikbaarheid post onbekend, binnen Nederlandse kantoortijd',
-      grondslag: 'Voorbeeldinstructie §3.4',
-      wanneer: { situatie: ['nieuw'], urgentie: ['ja', 'onbekend'], postOpen: ['onbekend'], nlKantoortijd: ['ja'] },
-      advies: {
-        niveau: 'overleg',
-        kop: 'Overleggen met casemanagement',
-        metWie: 'Casemanagement consulaire zaken',
-        stappen: [
-          'Bel casemanagement en zeg erbij dat je de bereikbaarheid van de post niet kunt vaststellen.',
-          'Geef door: land en plaats, naam en geboortedatum, contactgegevens van de melder.'
-        ],
-        toelichting: 'De post staat niet in de lijst of het land is onbekend. Zoek dat niet zelf uit terwijl de beller wacht.'
-      }
-    },
-    {
-      id: 'urgent-post-onbekend-buiten-kantoortijd',
-      naam: 'Urgent, bereikbaarheid post onbekend, buiten Nederlandse kantoortijd',
-      grondslag: 'Voorbeeldinstructie §3.5',
-      wanneer: { situatie: ['nieuw'], urgentie: ['ja', 'onbekend'], postOpen: ['onbekend'], nlKantoortijd: ['nee'] },
-      advies: {
-        niveau: 'direct',
-        kop: 'Direct overleggen',
-        metWie: 'Dienstdoend consulair medewerker (24/7-lijn)',
-        stappen: [
-          'Bel de dienstdoend medewerker en zeg erbij dat de bereikbaarheid van de post onbekend is.',
-          'Geef door: land en plaats, naam en geboortedatum, contactgegevens van de melder.'
-        ],
-        toelichting: 'De post staat niet in de lijst of het land is onbekend. Zoek dat niet zelf uit terwijl de beller wacht.'
-      }
-    },
-    {
-      id: 'rustig-nabestaanden-post-open',
-      naam: 'Niet urgent, nabestaanden ter plaatse, post open',
-      grondslag: 'Voorbeeldinstructie §4.1',
-      wanneer: { situatie: ['nieuw'], urgentie: ['nee'], nabestaanden: ['ja'], postOpen: ['ja'] },
-      advies: {
-        niveau: 'overleg',
-        kop: 'Overleggen met de post',
-        metWie: 'De post in het land zelf',
-        stappen: [
-          'Bel de post; die kan de nabestaanden ter plaatse verder helpen.',
-          'Geef de contactgegevens van de nabestaande door.',
-          'Leg de melding vast voor casemanagement.'
-        ],
-        toelichting: 'Niet urgent, maar er is iemand ter plaatse en de post is open — dan gaat het daarheen.'
-      }
-    },
-    {
-      id: 'rustig-nabestaanden-post-dicht',
-      naam: 'Niet urgent, nabestaanden ter plaatse, post niet bereikbaar',
-      grondslag: 'Voorbeeldinstructie §4.2',
-      wanneer: { situatie: ['nieuw'], urgentie: ['nee'], nabestaanden: ['ja'], postOpen: ['nee', 'onbekend'] },
+      id: 'begraven-buiten-kantoortijd-familie-weet-het',
+      naam: 'Al begraven of gecremeerd, buiten lokale kantoortijden, familie is op de hoogte',
+      grondslag: 'Stap 4 — Persoon is al begraven/gecremeerd, buiten lokale kantoortijden',
+      wanneer: { melder: ['anders'], begraven: ['ja'], lokaleKantoortijd: ['nee'], familie: ['ja'] },
       advies: {
         niveau: 'geen',
-        kop: 'Nu geen overleg',
-        metWie: 'Niemand — casemanagement pakt het op',
+        kop: 'Geen overleg — laat terugbellen of mailen',
+        metWie: 'Niemand — de beller komt de volgende werkdag terug',
         stappen: [
-          'Leg de melding vast met de contactgegevens van de nabestaande ter plaatse.',
-          'Vertel de nabestaande hoe laat de post weer opengaat (zie het kader hieronder).',
-          'Casemanagement pakt de melding op tijdens Nederlandse kantoortijd.'
+          'Vraag de beller om de volgende werkdag terug te bellen, of de vraag op de mail te zetten.',
+          NOTEER
         ],
-        toelichting: 'Er is geen onomkeerbare beslissing aanstaande, dus niemand hoeft hiervoor gewekt te worden.'
+        toelichting: 'De familie is op de hoogte en de persoon is al begraven of gecremeerd: hiervoor hoeft niemand buiten kantoortijd gebeld te worden.'
       }
     },
     {
-      id: 'rustig-geen-nabestaanden',
-      naam: 'Niet urgent, niemand ter plaatse die hulp nodig heeft',
-      grondslag: 'Voorbeeldinstructie §4.3',
-      wanneer: { situatie: ['nieuw'], urgentie: ['nee'], nabestaanden: ['nee'] },
+      id: 'begraven-onbekend',
+      naam: 'Onbekend of de persoon al begraven of gecremeerd is',
+      grondslag: 'Stap 4 — "Ik twijfel om de DDA te bellen"',
+      wanneer: { melder: ['anders'], begraven: ['onbekend'] },
       advies: {
-        niveau: 'geen',
-        kop: 'Geen overleg nodig',
-        metWie: 'Niemand — je handelt dit zelf af',
+        niveau: 'overleg',
+        kop: 'Zoek dit uit, of gebruik de twijfelroute',
+        metWie: 'Eerst de vraagbaak; is die er niet, je directe collega’s',
         stappen: [
-          'Neem de melding op: naam en geboortedatum, plaats en datum van overlijden, contactgegevens van de melder.',
-          'Zeg toe dat casemanagement op de eerstvolgende werkdag contact opneemt.'
+          'Vraag de beller of de persoon al begraven of gecremeerd is — hierop splitst de instructie.',
+          'Krijg je dat niet helder: overleg met de vraagbaak, of anders met je directe collega’s.',
+          NOTEER
         ],
-        toelichting: 'Verandert er iets — bijvoorbeeld een begrafenis die ineens morgen is — loop de filter dan opnieuw door.'
+        toelichting: 'De instructie kent alleen de route "nog niet begraven" en de route "al begraven of gecremeerd". Zonder dat antwoord kiest de tool geen van beide voor je.',
+        anders: [NIEMAND]
+      }
+    },
+    {
+      id: 'land-onbekend',
+      naam: 'Lokale kantoortijd niet vast te stellen',
+      grondslag: 'Stap 4 — "Ik twijfel om de DDA te bellen"',
+      wanneer: { lokaleKantoortijd: ['onbekend'] },
+      advies: {
+        niveau: 'overleg',
+        kop: 'Zoek de lokale kantoortijd op, of gebruik de twijfelroute',
+        metWie: 'Eerst de vraagbaak; is die er niet, je directe collega’s',
+        stappen: [
+          'Zoek op wat de kantoortijden van de post in dat land zijn — daar hangt de hele vervolgstap van af.',
+          'Lukt dat niet snel: overleg met de vraagbaak, of anders met je directe collega’s.',
+          NOTEER
+        ],
+        toelichting: 'Dit land staat niet in de postenlijst van de tool, dus ze kan niet uitrekenen of het daar kantoortijd is.',
+        anders: [NIEMAND]
       }
     },
     {
@@ -324,21 +297,26 @@ window.FILTERLOGICA = (function () {
       advies: {
         niveau: 'overleg',
         kop: 'Overleggen',
-        metWie: 'Casemanagement, of buiten kantoortijd de dienstdoend consulair medewerker',
+        metWie: 'Eerst de vraagbaak; is die er niet, je directe collega’s',
         stappen: [
           'Overleg, en zeg erbij dat de filtertool deze combinatie niet dekt.',
-          'Meld de combinatie bij de beheerder van de tool, zodat de logica kan worden aangevuld.'
+          'Meld de combinatie bij de beheerder van de tool, zodat de logica kan worden aangevuld.',
+          NOTEER
         ],
-        toelichting: 'De tool geeft hier geen zelfstandig advies: geen enkele regel past op deze antwoorden.'
+        toelichting: 'De tool geeft hier geen zelfstandig advies: geen enkele regel uit stap 4 past op deze antwoorden.',
+        anders: [NIEMAND]
       }
     }
   ];
 
   return {
-    versie: '0.1 — voorbeeldlogica',
+    versie: '1.0',
     bijgewerkt: '2026-09-14',
-    bron: 'Fictieve werkinstructie "Melding van overlijden" (voorbeeld, geen beleid)',
+    bron: 'WI: Overlijden — stap 4: Bepaal de vervolgstap: overleggen of later terugbellen',
+    links: LINK,
+    start: start,
     stappen: stappen,
+    toonFeiten: toonFeiten,
     feitLabels: feitLabels,
     regels: regels
   };
