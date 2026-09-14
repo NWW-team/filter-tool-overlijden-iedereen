@@ -32,10 +32,13 @@ te publiceren. Alleen de omslag verschilt; de tool zelf staat in `assets/` en
 
 ## Wat de tool doet
 
-* **Eén vraag tegelijk.** Twee tot vier vragen, met de cijfertoetsen te
+* **Eén vraag tegelijk.** Drie tot vijf vragen, met de cijfertoetsen te
   beantwoorden. Backspace gaat terug, Escape begint opnieuw bij de volgende
   beller. Een vraag wordt overgeslagen zodra het antwoord de uitkomst niet meer
   kan veranderen.
+* **De beller en het overlijden worden apart gevraagd.** Zit de beller ergens
+  anders, dan zet de tool die klok er apart bij — want de Nederlandse klok, de
+  klok van de beller en die van de post kunnen alle drie verschillen.
 * **De klok en de postenlijst doen het rekenwerk.** De voorlichter hoeft niet
   te weten hoe laat het in Caïro is of dat daar de werkweek van zondag tot
   donderdag loopt. Tijdzone, afwijkende werkweek, pauzes en lokale feestdagen
@@ -97,6 +100,8 @@ zien op welke versie een advies gebaseerd was.
 
 * De echte openingstijden van de posten.
 * Wie je precies belt: de post of casemanagement.
+* Welke klok telt als de beller in een ander land zit dan het overlijden — de
+  tool rekent met het land van overlijden en laat de rest zien.
 * Stap 2 en 3 van de instructie (Hermes) — de tool filtert alleen op de
   situatie.
 * Telefoonnummers en doorkiesnummers per post.

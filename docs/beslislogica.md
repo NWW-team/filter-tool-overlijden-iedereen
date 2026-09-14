@@ -17,14 +17,19 @@ laatste actie in elk advies.
 | Van wie komt de melding? | altijd | van een nabestaande of andere melder · van de lokale autoriteiten |
 | Is de persoon al begraven of gecremeerd? | niet bij een melding van de lokale autoriteiten | nee · ja · weet ik niet |
 | In welk land is de persoon overleden? | tenzij de route al vastligt ("weet ik niet" over begraven) | een post uit de lijst · onbekend |
+| Waar is de beller? | idem | in hetzelfde land · in Nederland · een ander land · onbekend |
 | Zijn de directe nabestaanden al op de hoogte? | alleen bij: al begraven/gecremeerd én buiten lokale kantoortijden | ja · nee · weet ik niet |
 
 De tool vraagt niet hoe laat het is. Ze leidt uit de klok en de postenlijst af
 of het in het land van overlijden binnen lokale kantoortijden is — inclusief
 tijdzone, afwijkende werkweek, pauzes en lokale feestdagen.
 
+De beller kan ergens anders zitten dan het overlijden. "In hetzelfde land" is
+één tik; alleen als het afwijkt, vraagt de tool door en zet ze die klok er
+apart bij.
+
 Een vraag wordt overgeslagen zodra het antwoord de uitkomst niet meer kan
-veranderen. Een melding van de lokale autoriteiten is in twee vragen klaar.
+veranderen. Een melding van de lokale autoriteiten is in drie vragen klaar.
 
 ## Wat de tool adviseert
 
@@ -54,6 +59,15 @@ naar een aparte pagina ("Bekijk met wie je overlegt"). Die pagina zit niet in
 de tool; elk advies linkt ernaar. Dit is het grootste openstaande gat: de vraag
 "met wie" is precies wat de voorlichter wil weten. Zodra die pagina er is, kan
 de tool dat zelf bepalen.
+
+**Welke klok telt als de beller ergens anders zit.** De instructie zegt
+"lokale kantoortijden" zonder erbij te zeggen van welk land; de strategie
+spreekt over "de post in het land waar de klant is". De tool rekent met het
+land van overlijden — daar zit de zaak — en zet de klok van de beller er
+alleen naast. Dezelfde vraag speelt bij "laat de volgende werkdag
+terugbellen": de werkdag van de post, of die van de beller? Doen jullie dit
+anders, dan verandert er één regel in `assets/app.js`: welk land
+`lokaleKantoortijd` voedt.
 
 **De lokale kantoortijden zelf.** `data/posten.js` bevat nu voorbeelden. Tot de
 echte postenlijst erin staat, is "binnen of buiten lokale kantoortijden" een

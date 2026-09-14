@@ -199,6 +199,8 @@
     var waarde = state.antwoorden[stapId];
     if (!stap) return waarde;
     if (stap.type === 'post') {
+      if (waarde === 'zelfde') return 'Zelfde land';
+      if (waarde === 'nederland') return 'Nederland';
       var post = zoekPost(waarde);
       return post ? post.land : 'Land onbekend';
     }
@@ -417,6 +419,31 @@
   function tekenPostKeuze(stap) {
     var doos = el('div', 'postkeuze');
     var moment = nu();
+    var nummer = 0;
+
+    if (stap.snelkeuzes) {
+      var f = feiten();
+      var snel = el('div', 'opties opties--snel');
+      stap.snelkeuzes.forEach(function (optie) {
+        if (optie.alsNiet && voldoet(optie.alsNiet, f)) return;
+        if (optie.als && !voldoet(optie.als, f)) return;
+        nummer += 1;
+        var knop = el('button', 'optie');
+        knop.type = 'button';
+        knop.dataset.sneltoets = String(nummer);
+        knop.appendChild(el('span', 'optie-nummer', String(nummer)));
+        var tekst = el('span', 'optie-tekst');
+        tekst.appendChild(el('span', 'optie-label', optie.label));
+        if (optie.toelichting) tekst.appendChild(el('span', 'optie-toelichting', optie.toelichting));
+        knop.appendChild(tekst);
+        knop.addEventListener('click', function () { antwoord(stap.id, optie.waarde); });
+        snel.appendChild(knop);
+      });
+      if (snel.children.length) {
+        doos.appendChild(snel);
+        doos.appendChild(el('p', 'ofwel', 'of kies een ander land'));
+      }
+    }
 
     var zoek = document.createElement('input');
     zoek.type = 'search';
@@ -466,7 +493,9 @@
     }
 
     vulLijst();
-    setTimeout(function () { zoek.focus(); }, 0);
+    /* Met snelkeuzes erboven blijft de focus vrij, zodat de cijfertoetsen
+     * werken; zonder snelkeuzes is typen meteen zoeken. */
+    if (!stap.snelkeuzes) setTimeout(function () { zoek.focus(); }, 0);
     return doos;
   }
 
@@ -507,9 +536,11 @@
     bereik.appendChild(tekenBereikbaarheid(D.casemanagement, 'Nederland'));
     if ('post' in state.antwoorden) {
       var post = zoekPost(state.antwoorden.post);
-      if (post) bereik.appendChild(tekenBereikbaarheid(post, 'In het land'));
+      if (post) bereik.appendChild(tekenBereikbaarheid(post, 'Waar het overlijden was'));
       else bereik.appendChild(tekenOnbekendePost());
     }
+    var beller = bellerInfo();
+    if (beller && !beller.zelfde) bereik.appendChild(tekenBeller(beller));
     wrap.appendChild(bereik);
 
     var acties = el('div', 'acties');
@@ -623,6 +654,41 @@
       if (org.buitenUren) kaart.appendChild(el('p', 'bereik-nood', org.buitenUren));
     }
     if (org.opmerking) kaart.appendChild(el('p', 'bereik-opmerking', org.opmerking));
+    var beller = bellerInfo();
+    if (beller && beller.zelfde && beller.post === org) {
+      kaart.appendChild(el('p', 'bereik-beller', 'De beller is daar ook.'));
+    }
+    return kaart;
+  }
+
+  function bellerInfo() {
+    var waarde = state.antwoorden.bellerLand;
+    if (!waarde || waarde === 'onbekend') return null;
+    if (waarde === 'nederland') return { naam: 'Nederland', tijdzone: D.casemanagement.tijdzone };
+    var post = zoekPost(waarde === 'zelfde' ? state.antwoorden.post : waarde);
+    if (!post) return null;
+    return { naam: post.land, tijdzone: post.tijdzone, post: post, zelfde: waarde === 'zelfde' };
+  }
+
+  function tekenBeller(info) {
+    var moment = nu();
+    var kaart = el('section', 'kaart kaart--bereik');
+    kaart.appendChild(el('p', 'bereik-kopje', 'Waar de beller is'));
+
+    var rij = el('div', 'bereik-rij');
+    rij.appendChild(el('span', 'bereik-naam', info.naam));
+    kaart.appendChild(rij);
+    kaart.appendChild(el('p', 'bereik-tijd', 'Daar is het ' + tijdTekst(info.tijdzone, moment)));
+
+    if (info.post) {
+      var open = isOpen(info.post, moment);
+      var postRij = el('p', 'bereik-uren', info.post.naam + ' is daar nu ' + (open ? 'open' : 'dicht') + '.');
+      kaart.appendChild(postRij);
+    } else {
+      kaart.appendChild(el('p', 'bereik-uren', 'Geen post in de lijst voor dit land.'));
+    }
+    kaart.appendChild(el('p', 'bereik-opmerking',
+      'De vervolgstap hangt af van de kantoortijden bij het overlijden, niet van de klok van de beller.'));
     return kaart;
   }
 
@@ -644,8 +710,10 @@
     r.push('');
     r.push('Vervolgstap volgens de filtertool: ' + regel.advies.kop + '.');
     r.push('Met wie: ' + regel.advies.metWie + '.');
+    var beller = bellerInfo();
     r.push('Moment: ' + tijdTekst(D.casemanagement.tijdzone, nu()) + ' (NL)' +
       (post ? ', ter plaatse ' + tijdTekst(post.tijdzone, nu()) : '') +
+      (beller && !beller.zelfde ? ', bij de beller in ' + beller.naam + ' ' + tijdTekst(beller.tijdzone, nu()) : '') +
       (state.gesimuleerd ? ' [gesimuleerd moment]' : ''));
     r.push('');
     r.push('Antwoorden:');

@@ -280,6 +280,14 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
 /* -------------------------------------------------------------- postlijst */
 
 .postkeuze { margin-top: 16px; }
+.opties--snel { margin-top: 0; margin-bottom: 12px; }
+.ofwel {
+  margin: 0 0 8px;
+  font-size: 12px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--tekst-zacht);
+}
 .invoer--zoek { width: 100%; margin-bottom: 10px; }
 
 .postlijst {
@@ -413,6 +421,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
   color: var(--tekst-zacht);
 }
 .bereik-volgende { color: var(--tekst); font-weight: 600; }
+.bereik-beller { margin: 8px 0 0; font-size: 13.5px; color: var(--tekst); font-weight: 600; }
 .bereik-opmerking { font-style: italic; }
 
 /* --------------------------------------------------------------- knoppen */

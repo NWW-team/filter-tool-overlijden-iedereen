@@ -27,6 +27,10 @@
  * uitrekent uit de klok en de postenlijst:
  *     lokaleKantoortijd — 'ja' | 'nee' | 'onbekend'
  *
+ * Dat feit komt uit het LAND VAN OVERLIJDEN, want daar zit de zaak. Waar de
+ * beller is, staat los daarvan: de tool laat die klok zien, maar laat er geen
+ * regel op draaien. Zie docs/beslislogica.md — dit is een openstaande vraag.
+ *
  * LET OP: de openingstijden in data/posten.js zijn nog voorbeelden. Daarmee is
  * "lokale kantoortijd" nu een aanname, niet een feit.
  */
@@ -89,6 +93,19 @@ window.FILTERLOGICA = (function () {
       als: [{ melder: ['autoriteiten'] }, { begraven: ['nee', 'ja'] }],
       vraag: 'In welk land is de persoon overleden?',
       hint: 'Je ziet meteen hoe laat het daar is en of het daar kantoortijd is.'
+    },
+    {
+      id: 'bellerLand',
+      type: 'post',
+      als: [{ melder: ['autoriteiten'] }, { begraven: ['nee', 'ja'] }],
+      vraag: 'Waar is de beller?',
+      hint: 'Bellers uit het buitenland komen ook bij ons uit, dus de Nederlandse klok zegt niets over hun dag.',
+      /* Twee snelkeuzes boven de landenlijst. Een snelkeuze met `alsNiet`
+       * verdwijnt als die voorwaarde klopt. */
+      snelkeuzes: [
+        { waarde: 'zelfde', label: 'In hetzelfde land als het overlijden', alsNiet: { post: ['onbekend'] } },
+        { waarde: 'nederland', label: 'In Nederland' }
+      ]
     },
     {
       id: 'familie',
