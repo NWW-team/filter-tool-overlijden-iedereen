@@ -1,0 +1,1170 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Datastromen — Filtertool melding van overlijden</title>
+<meta name="description" content="Waar de gegevens vandaan komen, wat de filtertool ermee doet, waar ze terechtkomen, en wat er wel en niet bewaard hoeft te worden.">
+<style>
+/* ------------------------------------------------------------------ basis */
+:root{
+  color-scheme: light dark;
+
+  --pap:#faf9f7;
+  --vel:#ffffff;
+  --inkt:#1c1b19;
+  --inkt-zacht:#57544e;
+  --inkt-stil:#84807a;
+  --rand:#e2ded7;
+  --rand-hard:#cdc7bd;
+  --accent:#1f4e79;
+  --accent-zacht:#e8f0f7;
+
+  --db:#5b3fb5;          --db-vel:#efeaff;   --db-rand:#c9bcf0;
+  --tijdelijk:#0b6b7a;   --tijdelijk-vel:#e4f4f6; --tijdelijk-rand:#a9d8de;
+  --elders:#2f6b34;      --elders-vel:#e8f3e7; --elders-rand:#b4d5b0;
+  --keuze:#9a5410;       --keuze-vel:#fbeedd; --keuze-rand:#ecc79a;
+
+  --radius:10px;
+  --schaduw:0 1px 2px rgba(28,27,25,.05), 0 6px 18px rgba(28,27,25,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --pap:#16171a;
+    --vel:#1e2024;
+    --inkt:#eceae6;
+    --inkt-zacht:#b4b0a9;
+    --inkt-stil:#8b8781;
+    --rand:#32353b;
+    --rand-hard:#454951;
+    --accent:#8ab6de;
+    --accent-zacht:#1c2b38;
+
+    --db:#b9a6ff;          --db-vel:#241f36;   --db-rand:#463a6b;
+    --tijdelijk:#6fd3e0;   --tijdelijk-vel:#122a2e; --tijdelijk-rand:#27535b;
+    --elders:#8ed08a;      --elders-vel:#16281a; --elders-rand:#2e4f31;
+    --keuze:#e8b071;       --keuze-vel:#2e2216; --keuze-rand:#5d452a;
+
+    --schaduw:0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.25);
+  }
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--pap);
+  color:var(--inkt);
+  font:16px/1.6 "Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+h1,h2,h3{font-family:"Source Serif 4", Georgia, "Times New Roman", serif; line-height:1.25; font-weight:600; margin:0}
+a{color:var(--accent)}
+p{margin:0 0 .8em}
+.wrap{max-width:1180px; margin:0 auto; padding:0 20px}
+
+/* ------------------------------------------------------------------- kop */
+.kop{border-bottom:1px solid var(--rand); background:var(--vel)}
+.kop-in{padding:38px 0 30px}
+.kop h1{font-size:clamp(1.7rem, 4.2vw, 2.5rem); letter-spacing:-.01em}
+.kop .onder{font-size:1.05rem; color:var(--inkt-zacht); max-width:62ch; margin-top:.5em}
+.meta{margin-top:18px; display:flex; flex-wrap:wrap; gap:8px 10px; font-size:.82rem; color:var(--inkt-stil)}
+.meta span{border:1px solid var(--rand); border-radius:999px; padding:3px 11px; background:var(--pap)}
+
+/* --------------------------------------------------------------- secties */
+section.blok{padding:40px 0 10px}
+section.blok > .wrap > h2{font-size:1.5rem; margin-bottom:.25em}
+.leadin{color:var(--inkt-zacht); max-width:70ch; margin-bottom:22px}
+.kaart{background:var(--vel); border:1px solid var(--rand); border-radius:var(--radius); padding:18px 20px; box-shadow:var(--schaduw)}
+.notitie{border-left:3px solid var(--accent); background:var(--accent-zacht); border-radius:6px; padding:14px 16px; margin:0 0 22px; font-size:.94rem}
+.notitie strong{display:block; margin-bottom:.2em}
+
+/* ------------------------------------------------------------ bedieining */
+.balk{position:sticky; top:0; z-index:40; background:color-mix(in srgb, var(--vel) 92%, transparent); backdrop-filter:blur(8px); border-bottom:1px solid var(--rand)}
+.balk-in{display:flex; flex-wrap:wrap; gap:14px 22px; align-items:center; padding:12px 0}
+.knopgroep{display:flex; flex-wrap:wrap; gap:6px; align-items:center}
+.knopgroep > .kopje{font-size:.76rem; text-transform:uppercase; letter-spacing:.08em; color:var(--inkt-stil); margin-right:4px}
+button.filter, button.schakel{
+  font:inherit; font-size:.88rem; cursor:pointer;
+  background:var(--pap); color:var(--inkt);
+  border:1px solid var(--rand-hard); border-radius:999px; padding:6px 14px;
+}
+button.filter:hover, button.schakel:hover{border-color:var(--accent)}
+button.filter[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:#fff}
+@media (prefers-color-scheme: dark){ button.filter[aria-pressed="true"]{color:#10161c} }
+button.schakel[aria-pressed="true"]{background:var(--accent-zacht); border-color:var(--accent); color:var(--accent); font-weight:600}
+.telling{font-size:.82rem; color:var(--inkt-stil); margin-left:auto}
+
+/* ----------------------------------------------------------------- legenda */
+.legenda{display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:12px; margin-bottom:8px}
+.legenda .lem{border:1px solid var(--rand); border-radius:var(--radius); padding:12px 14px; background:var(--vel)}
+.legenda .lem p{margin:0; font-size:.86rem; color:var(--inkt-zacht)}
+
+.vlag{display:inline-flex; align-items:center; gap:6px; font-size:.75rem; font-weight:600; letter-spacing:.01em;
+      border-radius:999px; padding:2px 9px; border:1px solid; white-space:nowrap}
+.vlag::before{content:""; width:7px; height:7px; border-radius:2px; background:currentColor}
+.vlag-db{color:var(--db); background:var(--db-vel); border-color:var(--db-rand)}
+.vlag-tijdelijk{color:var(--tijdelijk); background:var(--tijdelijk-vel); border-color:var(--tijdelijk-rand)}
+.vlag-elders{color:var(--elders); background:var(--elders-vel); border-color:var(--elders-rand)}
+.vlag-keuze{color:var(--keuze); background:var(--keuze-vel); border-color:var(--keuze-rand)}
+
+.status{display:inline-block; font-size:.72rem; border-radius:4px; padding:1px 7px; border:1px solid var(--rand-hard); color:var(--inkt-zacht); background:var(--pap); white-space:nowrap}
+.status-gebouwd{border-color:var(--elders-rand); color:var(--elders); background:var(--elders-vel)}
+.status-strategie{border-style:dashed}
+.status-voorstel{border-style:dashed; border-color:var(--keuze-rand); color:var(--keuze); background:var(--keuze-vel)}
+.status-aanname{border-color:var(--keuze-rand); color:var(--keuze); background:var(--keuze-vel)}
+
+/* ------------------------------------------------------------------ crud */
+.crud{display:inline-flex; gap:3px; vertical-align:middle}
+.crud b{
+  display:inline-grid; place-items:center; width:19px; height:19px; border-radius:5px;
+  font-size:.7rem; font-weight:700; font-family:ui-monospace, SFMono-Regular, Menlo, monospace;
+  background:var(--db-vel); color:var(--db); border:1px solid var(--db-rand);
+}
+.crud .geen{
+  width:auto; padding:0 8px; border-radius:999px; font-weight:600; font-size:.7rem; font-family:inherit;
+  background:var(--pap); color:var(--inkt-stil); border:1px solid var(--rand-hard); letter-spacing:.01em;
+}
+body.crud-uit .crud{display:none}
+body.crud-uit .crud-kolom{display:none}
+
+/* --------------------------------------------------------------- diagram */
+.band{margin:0 0 30px}
+.band-kop{display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 12px; margin:0 0 4px}
+.band-kop h3{font-size:1.12rem}
+.band-kop .bandnr{font-size:.75rem; letter-spacing:.09em; text-transform:uppercase; color:var(--inkt-stil)}
+.band-uitleg{color:var(--inkt-zacht); font-size:.92rem; max-width:74ch; margin:0 0 14px}
+
+.diagram-scroll{overflow-x:auto; padding-bottom:6px; margin:0 -20px; padding-left:20px; padding-right:20px}
+.raster{display:grid; gap:12px; align-items:start; min-width:960px}
+.raster.k3{grid-template-columns:minmax(0,1.05fr) minmax(150px,.75fr) minmax(0,1.05fr) minmax(150px,.75fr) minmax(0,1.05fr)}
+.raster.k2{grid-template-columns:minmax(0,1fr) minmax(170px,.8fr) minmax(0,1fr)}
+@media (max-width:900px){
+  .diagram-scroll{overflow-x:visible; margin:0; padding-left:0; padding-right:0}
+  .raster, .raster.k3, .raster.k2{grid-template-columns:1fr; min-width:0}
+}
+
+.kolom{display:flex; flex-direction:column; gap:10px}
+.kolom-kop{font-size:.74rem; text-transform:uppercase; letter-spacing:.09em; color:var(--inkt-stil); font-weight:700; padding:0 2px 2px}
+.goot{display:flex; flex-direction:column; gap:8px; justify-content:center; padding-top:22px}
+@media (max-width:900px){ .goot{padding-top:0} }
+
+.knoop{
+  position:relative; background:var(--vel); border:1px solid var(--rand-hard); border-radius:var(--radius);
+  padding:11px 13px; box-shadow:var(--schaduw); transition:opacity .18s, border-color .18s, transform .18s;
+  cursor:pointer; text-align:left; font:inherit; color:inherit; width:100%; display:block;
+}
+.knoop:hover{border-color:var(--accent)}
+.knoop .naam{font-weight:700; font-size:.95rem; display:block; line-height:1.3}
+.knoop .sub{display:block; font-size:.79rem; color:var(--inkt-zacht); margin-top:3px; line-height:1.45}
+.knoop .soortje{display:block; font-size:.68rem; text-transform:uppercase; letter-spacing:.09em; color:var(--inkt-stil); margin-bottom:4px; font-weight:700}
+.knoop .vlaggen{display:flex; flex-wrap:wrap; gap:5px; margin-top:8px}
+
+.knoop.s-gebruiker{border-left:4px solid var(--accent)}
+.knoop.s-extern{border-left:4px solid var(--elders); border-style:solid dashed dashed solid}
+.knoop.s-bestand{border-left:4px solid var(--elders)}
+.knoop.s-app{border-left:4px solid var(--tijdelijk); background:linear-gradient(180deg, var(--tijdelijk-vel) 0%, var(--vel) 62%)}
+.knoop.s-weergave{border-left:4px solid var(--tijdelijk)}
+.knoop.s-opslag{border-left:4px solid var(--db)}
+.knoop.s-externe-db{border-left:4px solid var(--db)}
+.knoop.s-voorstel{border-left:4px solid var(--keuze); border-style:dashed dashed dashed solid}
+.knoop.s-leeg{border:1px dashed var(--rand-hard); background:transparent; box-shadow:none; cursor:default}
+.knoop.s-leeg .naam{color:var(--inkt-zacht); text-decoration:line-through; text-decoration-thickness:1px}
+
+.knoop[data-actief="true"]{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-zacht), var(--schaduw)}
+.gedimd{opacity:.24}
+
+.appdoos{border:1px dashed var(--tijdelijk-rand); border-radius:12px; padding:10px; background:color-mix(in srgb, var(--tijdelijk-vel) 45%, transparent); display:flex; flex-direction:column; gap:8px}
+.appdoos .doosnaam{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--tijdelijk); font-weight:700; padding:2px 2px 0}
+
+/* pijlen */
+.pijl{
+  display:block; width:100%; text-align:left; font:inherit; color:inherit; cursor:pointer;
+  background:var(--vel); border:1px solid var(--rand); border-radius:8px; padding:8px 10px 9px;
+  transition:opacity .18s, border-color .18s;
+}
+.pijl:hover{border-color:var(--accent)}
+.pijl[data-actief="true"]{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-zacht)}
+.pijl .lijn{display:flex; align-items:center; gap:5px; margin-bottom:6px; color:var(--inkt-stil);
+  font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; font-weight:700}
+.pijl .lijn i{flex:1 1 10px; min-width:8px; height:1px; background:var(--rand-hard); display:block}
+.pijl .lijn .van, .pijl .lijn .naar{flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.pijl .lijn .punt{font-size:.82rem; line-height:1; letter-spacing:0; flex:none}
+.pijl .wat{display:block; font-size:.82rem; font-weight:600; line-height:1.35}
+.pijl .mee{display:block; font-size:.75rem; color:var(--inkt-zacht); margin-top:3px; line-height:1.4}
+.pijl .onderrand{display:flex; flex-wrap:wrap; gap:5px; align-items:center; margin-top:7px}
+.pijl.c-db{border-left:4px solid var(--db)}
+.pijl.c-tijdelijk{border-left:4px solid var(--tijdelijk)}
+.pijl.c-elders{border-left:4px solid var(--elders)}
+.pijl.c-keuze{border-left:4px solid var(--keuze); border-top-style:dashed; border-right-style:dashed; border-bottom-style:dashed}
+.pijl.binnen{background:transparent; box-shadow:none; border-style:dotted; border-left-style:solid}
+.pijl.terug .lijn .punt{color:var(--accent)}
+
+@media (max-width:900px){
+  .pijl .lijn i{background:linear-gradient(90deg, var(--rand-hard), var(--rand-hard))}
+  .goot .pijl{margin-left:14px; border-left-width:4px}
+}
+
+/* --------------------------------------------------------------- matrix */
+.tabelwrap{overflow-x:auto; border:1px solid var(--rand); border-radius:var(--radius); background:var(--vel); box-shadow:var(--schaduw)}
+table{border-collapse:collapse; width:100%; min-width:900px; font-size:.86rem}
+thead th{
+  text-align:left; font-size:.72rem; text-transform:uppercase; letter-spacing:.07em; color:var(--inkt-stil);
+  padding:11px 12px; border-bottom:1px solid var(--rand-hard); background:var(--pap); position:sticky; top:0; white-space:nowrap;
+}
+tbody td{padding:12px; border-bottom:1px solid var(--rand); vertical-align:top; line-height:1.45}
+tbody tr:last-child td{border-bottom:0}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:var(--accent-zacht)}
+tbody tr[data-actief="true"] td{background:var(--accent-zacht)}
+td .gnaam{font-weight:700; display:block; margin-bottom:3px}
+td .gdetail{color:var(--inkt-zacht); font-size:.82rem; display:block}
+td .route{font-size:.8rem; line-height:1.5}
+td .route b{font-weight:600}
+td .pijltje{color:var(--inkt-stil); padding:0 3px}
+td .reden{color:var(--inkt-zacht); font-size:.82rem; margin-top:5px; display:block}
+td .vraagje{display:block; margin-top:6px; font-size:.82rem; color:var(--keuze); font-weight:600}
+td .blijft{display:block; margin-top:6px; font-size:.78rem; color:var(--inkt-stil)}
+.adv{display:block; font-size:.82rem; margin-top:5px}
+.adv b{font-weight:700}
+
+@media (max-width:760px){
+  .tabelwrap{border:0; background:transparent; box-shadow:none; overflow-x:visible}
+  table{min-width:0}
+  thead{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+  tbody tr{display:block; background:var(--vel); border:1px solid var(--rand); border-radius:var(--radius); margin-bottom:12px; box-shadow:var(--schaduw)}
+  tbody td{display:block; border-bottom:1px solid var(--rand); padding:10px 13px}
+  tbody td:last-child{border-bottom:0}
+  tbody td::before{
+    content:attr(data-label); display:block; font-size:.68rem; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--inkt-stil); font-weight:700; margin-bottom:4px;
+  }
+  tbody td:first-child::before{display:none}
+}
+
+/* ------------------------------------------------------------- voorstel */
+.voorstel{display:grid; grid-template-columns:repeat(auto-fit, minmax(270px,1fr)); gap:14px; margin-top:6px}
+.voorstel .kaart h3{font-size:1.02rem; margin-bottom:.45em; display:flex; align-items:center; gap:8px}
+.voorstel ul{margin:0; padding-left:18px}
+.voorstel li{margin-bottom:.45em; font-size:.9rem}
+.voorstel li:last-child{margin-bottom:0}
+.slot{border:2px solid var(--accent); border-radius:var(--radius); padding:20px 22px; background:var(--vel); margin-bottom:16px}
+.slot .zin{font-family:"Source Serif 4", Georgia, serif; font-size:1.22rem; line-height:1.45; margin:0}
+.keuzelijst{counter-reset:k; list-style:none; padding:0; margin:0}
+.keuzelijst li{counter-increment:k; position:relative; padding-left:38px; margin-bottom:14px}
+.keuzelijst li::before{
+  content:counter(k); position:absolute; left:0; top:1px; width:26px; height:26px; border-radius:50%;
+  display:grid; place-items:center; font-size:.8rem; font-weight:700;
+  background:var(--keuze-vel); color:var(--keuze); border:1px solid var(--keuze-rand);
+}
+.keuzelijst .kvraag{display:block; font-weight:700; margin-bottom:2px}
+.keuzelijst .kuitleg{display:block; font-size:.88rem; color:var(--inkt-zacht)}
+
+.voorbeeld{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:.78rem; line-height:1.55;
+  background:var(--pap); border:1px solid var(--rand); border-radius:8px; padding:12px 14px; white-space:pre-wrap; overflow-x:auto; margin:0}
+
+.voet{border-top:1px solid var(--rand); margin-top:40px; padding:26px 0 46px; color:var(--inkt-stil); font-size:.84rem}
+.voet p{max-width:80ch}
+.leegmelding{border:1px dashed var(--rand-hard); border-radius:var(--radius); padding:16px 18px; color:var(--inkt-zacht); font-size:.9rem; background:var(--pap); margin-bottom:16px}
+[hidden]{display:none !important}
+</style>
+</head>
+<body>
+
+<header class="kop">
+  <div class="wrap kop-in">
+    <h1>Datastromen van de Filtertool melding van overlijden</h1>
+    <p class="onder">Waar de gegevens vandaan komen, wat de tool ermee doet, waar ze terechtkomen — en welke daarvan écht bewaard moeten worden. Alles hieronder komt uit deze repository: <code>STRATEGY.md</code>, <code>README.md</code>, <code>docs/beslislogica.md</code>, <code>assets/app.js</code> en de drie bestanden in <code>data/</code>.</p>
+    <div class="meta">
+      <span>Logica v2.0 · bijgewerkt 2026-09-14</span>
+      <span>Bron: WI: Overlijden (stap 4) + WI: Overleg met post of casemanagement</span>
+      <span>Geen build, geen server, geen database</span>
+      <span>Strategie bijgewerkt 2026-09-14</span>
+      <span>Overzicht gemaakt op 15 september 2026</span>
+    </div>
+  </div>
+</header>
+
+<div class="balk">
+  <div class="wrap balk-in">
+    <div class="knopgroep">
+      <span class="kopje">Toon</span>
+      <button class="filter" data-filter="alle" aria-pressed="true">Alle data</button>
+      <button class="filter" data-filter="db" aria-pressed="false">Databaseopslag</button>
+      <button class="filter" data-filter="geendb" aria-pressed="false">Geen eigen databaseopslag</button>
+    </div>
+    <div class="knopgroep">
+      <button class="schakel" id="crudKnop" aria-pressed="true">CRUD-labels aan</button>
+      <button class="schakel" id="wisKnop">Selectie wissen</button>
+    </div>
+    <span class="telling" id="telling"></span>
+  </div>
+</div>
+
+<section class="blok">
+  <div class="wrap">
+    <div class="notitie">
+      <strong>Waarop dit gebaseerd is</strong>
+      Het strategiedocument (<code>STRATEGY.md</code>, doelprobleem · aanpak · vier sporen), het plan in <code>README.md</code> (“Wat er nog niet in zit”) en <code>docs/beslislogica.md</code> (“Keuzes die we hebben gemaakt”, “Bewust buiten de filter”), plus de code zelf. Wat ik zelf heb ingevuld, staat gemarkeerd als <span class="status status-aanname">aanname</span> of <span class="status status-voorstel">voorstel</span>; wat in de strategie staat maar nog niet gebouwd is, als <span class="status status-strategie">alleen in de strategie</span>.
+    </div>
+
+    <h2>Legenda</h2>
+    <p class="leadin">Vier opslagcategorieën, met kleur én tekst. Daarnaast staat bij elk onderdeel of het al gebouwd is.</p>
+    <div class="legenda">
+      <div class="lem"><span class="vlag vlag-db">eigen database</span><p style="margin-top:8px">Moet duurzaam in een eigen database staan. <b>Nu: geen enkel gegeven.</b></p></div>
+      <div class="lem"><span class="vlag vlag-tijdelijk">tijdelijk</span><p style="margin-top:8px">Alleen nodig voor invoer, berekening of weergave. Mag weg zodra het gesprek klaar is.</p></div>
+      <div class="lem"><span class="vlag vlag-elders">staat al elders</span><p style="margin-top:8px">Staat al in een bestand, in versiebeheer of in een extern systeem. Niet kopiëren naar een eigen database.</p></div>
+      <div class="lem"><span class="vlag vlag-keuze">keuze nodig</span><p style="margin-top:8px">Twijfelgeval. De openstaande vraag staat erbij.</p></div>
+      <div class="lem"><span class="status status-gebouwd">gebouwd</span><p style="margin-top:8px">Zit in de code en werkt vandaag.</p></div>
+      <div class="lem"><span class="status status-strategie">alleen in de strategie</span><p style="margin-top:8px">Staat in README/docs als “nog niet”, zit niet in de code.</p></div>
+      <div class="lem"><span class="status status-aanname">aanname</span><p style="margin-top:8px">Niet hard uit de repo te lezen; door mij ingevuld.</p></div>
+      <div class="lem"><span class="status status-voorstel">voorstel</span><p style="margin-top:8px">Staat nergens in de repo — dit is mijn suggestie, jij beslist.</p></div>
+    </div>
+    <div class="legenda" style="margin-top:12px">
+      <div class="lem"><span class="crud"><b>C</b><b>R</b><b>U</b><b>D</b></span><p style="margin-top:8px">Een echte actie op opgeslagen gegevens: aanmaken, lezen, wijzigen, verwijderen. Erbij staat altijd <i>waar</i> die actie plaatsvindt.</p></div>
+      <div class="lem"><span class="crud"><b class="geen">geen databaseactie</b></span><p style="margin-top:8px">Alleen transport, tijdelijke verwerking of een berekening. Er wordt niets opgeslagen.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="blok">
+  <div class="wrap">
+    <h2>1 · De datastromen</h2>
+    <p class="leadin">Klik op een pijl of een onderdeel om de hele route van dat gegeven op te lichten — in het diagram én in de matrix eronder. De namen zijn steeds die uit de code.</p>
+    <div id="diagram"></div>
+    <p id="diagramLeeg" class="leegmelding" hidden></p>
+  </div>
+</section>
+
+<section class="blok">
+  <div class="wrap">
+    <h2>2 · De matrix</h2>
+    <p class="leadin">Per gegeven of gebruikershandeling: bron → verwerking → bestemming, de CRUD-acties en waar die plaatsvinden, de opslagkeuze (wat er nu gebeurt tegenover wat ik adviseer) en de reden vanuit de use case.</p>
+    <div class="tabelwrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="min-width:200px">Gegeven of handeling</th>
+            <th style="min-width:230px">Bron → verwerking → bestemming</th>
+            <th class="crud-kolom" style="min-width:150px">CRUD &amp; waar</th>
+            <th style="min-width:170px">Opslagkeuze</th>
+            <th style="min-width:250px">Reden &amp; wat er blijft</th>
+          </tr>
+        </thead>
+        <tbody id="matrix"></tbody>
+      </table>
+    </div>
+    <p id="matrixLeeg" class="leegmelding" hidden></p>
+  </div>
+</section>
+
+<section class="blok">
+  <div class="wrap">
+    <h2>3 · Wat gebouwd is, en wat alleen in de strategie staat</h2>
+
+    <p class="leadin">De vier sporen uit <code>STRATEGY.md</code> zeggen elk iets over de datastromen. Daarom staan ze hier eerst.</p>
+    <div class="voorstel" style="margin-bottom:22px">
+      <div class="kaart">
+        <h3>Beslislogica</h3>
+        <p style="font-size:.9rem; margin:0">Eén op één kloppen met de instructie, en kloppend blijven als het beleid verandert.<br><b style="color:var(--elders)">→ Voor de datastromen:</b> de regels horen in een bestand in versiebeheer, niet in een database. Git bewaart wie wat wanneer veranderde; <code>docs/beslislogica.md</code> ligt ernaast om met de WI te vergelijken.</p>
+      </div>
+      <div class="kaart">
+        <h3>Bereikbaarheid van posten</h3>
+        <p style="font-size:.9rem; margin:0">Openingstijden, tijdzones en afwijkende werkweken actueel houden en op het juiste moment toepassen.<br><b style="color:var(--keuze)">→ Voor de datastromen:</b> dit is de enige Update die de use case echt mist. Nu staan er voorbeeldwaarden in <code>data/posten.js</code>. Zie keuze 2.</p>
+      </div>
+      <div class="kaart">
+        <h3>Snelheid in de wachtstand</h3>
+        <p style="font-size:.9rem; margin:0">De voorlichter moet er binnen een korte wachtstand doorheen zijn.<br><b style="color:var(--tijdelijk)">→ Voor de datastromen:</b> dit is het sterkste argument tegen opslag. Een inlog, een casenummer intypen of een opslagstap kost seconden die er niet zijn. De tool begint bij elke beller met een leeg scherm — dat is sneller dan wat dan ook.</p>
+      </div>
+      <div class="kaart">
+        <h3>Vertrouwen en dekking</h3>
+        <p style="font-size:.9rem; margin:0">Zichtbaar maken waaróm het advies eruit komt zoals het eruit komt.<br><b style="color:var(--elders)">→ Voor de datastromen:</b> navolgbaarheid vraagt hier geen logboek, maar een versienummer. “Waarom dit advies” en de Hermes-notitie dragen de regelnaam, de grondslag en <code>versie 2.0</code> met zich mee; Hermes bewaart dat.</p>
+      </div>
+    </div>
+
+    <div class="voorstel">
+      <div class="kaart">
+        <h3><span class="status status-gebouwd">gebouwd</span> Werkt vandaag</h3>
+        <ul>
+          <li>Vijf vragen met sneltoetsen; een vraag wordt overgeslagen zodra het antwoord de uitkomst niet meer verandert.</li>
+          <li><code>feiten()</code> rekent <code>caribisch</code>, <code>aanspreekpunt</code> en <code>kantoortijd</code> uit — inclusief tijdzone, afwijkende werkweek, pauzes en lokale feestdagen.</li>
+          <li>Elf regels in <code>data/beslislogica.js</code>, van boven naar beneden; de laatste is het vangnet.</li>
+          <li>“Waarom dit advies” met antwoorden, feiten, regelnaam, grondslag en logicaversie.</li>
+          <li>“Kopieer notitie voor Hermes” naar het klembord.</li>
+          <li>Demoklok (<code>state.gesimuleerd</code>) en automatisch hertekenen als een post open- of dichtgaat.</li>
+        </ul>
+      </div>
+      <div class="kaart">
+        <h3><span class="status status-strategie">alleen in de strategie</span> Nog niet gebouwd</h3>
+        <ul>
+          <li>De echte openingstijden van de posten. <code>data/posten.js</code> bevat voorbeelden — “binnen of buiten kantoortijd” is daarmee nu een aanname, en dat staat ook onder aan het scherm.</li>
+          <li>Stap 2 en 3 van de instructie (zoeken in Hermes, case aanmaken of aanvullen) — bewust buiten de filter gehouden.</li>
+          <li>Telefoonnummers. De tool wijst naar de landenpagina’s, de client en de BOA, maar houdt zelf geen nummers bij.</li>
+          <li>Een plek om te draaien: het doel is nu een demonstreerbaar prototype, geen intern gehoste app.</li>
+          <li>Onbevestigd volgens de strategie: of de beslislogica en de openingstijden als <b>interne data</b> gelden, en waar het prototype mag draaien. Tot dat helder is, werkt de tool met fictieve of publieke voorbeelden.</li>
+        </ul>
+      </div>
+      <div class="kaart">
+        <h3><span class="status status-aanname">aanname</span> Door mij ingevuld</h3>
+        <ul>
+          <li>Er is <b>geen koppeling met Hermes</b>: de notitie gaat via het klembord, met de hand. In de code zit alleen <code>navigator.clipboard.writeText</code>.</li>
+          <li>De antwoorden op de negen <b>checkvragen</b> (naam, geboortedatum, telefoonnummer) noteert de voorlichter in Hermes, niet in de tool. De tool toont de lijst alleen.</li>
+          <li>Er is <b>geen logging of telemetrie</b>. Nagekeken: in <code>assets/app.js</code> en <code>data/*.js</code> staat geen <code>fetch</code>, geen <code>XMLHttpRequest</code>, geen <code>localStorage</code>, geen <code>sessionStorage</code> en geen cookie.</li>
+          <li>Het lettertypeverzoek naar <b>Google Fonts</b> volgt uit de <code>&lt;link&gt;</code> in <code>index.html</code>; of dat op de werkplek daadwerkelijk het netwerk op mag, weet ik niet.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="blok">
+  <div class="wrap">
+    <h2>4 · Het voorstel</h2>
+
+    <div class="slot">
+      <p class="zin"><b>Deze app heeft geen eigen database nodig.</b> Alles wat erin gaat is één telefoongesprek lang geldig, en alles wat bewaard moet blijven hoort in Hermes — het zaaksysteem dat er al is. De filtertool is een rekenmachine op regels, geen dossier.</p>
+      <p style="margin:14px 0 0; font-size:.92rem; color:var(--inkt-zacht)">Dat is geen bezuiniging maar het spoor “Snelheid in de wachtstand”: de beller staat in de wacht. Een tool die eerst iets wil opslaan of ophalen, is trager dan even zelf nadenken — en dan grijpt de voorlichter terug op wat hij al deed.</p>
+    </div>
+
+    <div class="voorstel">
+      <div class="kaart">
+        <h3>De minimale opslag</h3>
+        <ul>
+          <li><b>Eigen database: nul gegevens.</b> Niet nodig voor de use case.</li>
+          <li><b>Bestanden in versiebeheer</b> — <code>data/posten.js</code>, <code>data/aanspreekpunt.js</code>, <code>data/beslislogica.js</code>. Git is hier de opslag: hij bewaart wie wat wanneer veranderde. Blijf <code>versie</code> en <code>bijgewerkt</code> ophogen, want die staan onder elk advies.</li>
+          <li><b>Hermes</b> — de case en de notitie in de Communication-tab (stap 5). Daar staat het dossier, daar hoort het te blijven.</li>
+        </ul>
+      </div>
+      <div class="kaart">
+        <h3>Wat je niet hoeft te bewaren</h3>
+        <ul>
+          <li>De vijf antwoorden (<code>state.antwoorden</code>) en de volgorde waarin ze gegeven zijn.</li>
+          <li>De afgeleide feiten <code>caribisch</code>, <code>aanspreekpunt</code> en <code>kantoortijd</code> — bewaren maakt ze meteen onjuist, want de klok loopt door.</li>
+          <li>Het advies zelf: reproduceerbaar uit dezelfde antwoorden plus de logicaversie, en het hoort al in Hermes.</li>
+          <li>De zoekterm in de postenlijst en het gekozen demomoment.</li>
+          <li>De notitietekst, ná het plakken.</li>
+        </ul>
+      </div>
+      <div class="kaart">
+        <h3>Waarom dat veilig is</h3>
+        <ul>
+          <li>De gegevens gaan over een overlijden en over wie het wel of niet weet. Niet bewaren wat je niet nodig hebt, is hier de goedkoopste maatregel.</li>
+          <li>Het advies is navolgbaar zonder opslag: antwoorden + regelnaam + grondslag + versie staan in de notitie, en die gaat naar Hermes.</li>
+          <li>Zonder eigen database blijft de tool wat hij is: losse HTML, CSS en JavaScript die je op elke plek kunt neerzetten.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 style="margin:30px 0 14px; font-size:1.15rem">De keuzes die nog openstaan</h3>
+    <div class="kaart">
+      <ol class="keuzelijst">
+        <li>
+          <span class="kvraag">Gelden de beslislogica en de openingstijden als interne data — en waar mag het prototype dan draaien?</span>
+          <span class="kuitleg">Deze staat al in <code>STRATEGY.md</code> als onbevestigd, en hij gaat vóór de rest: <code>data/posten.js</code> en <code>data/beslislogica.js</code> worden als gewone tekst naar de browser gestuurd, dus iedereen die de pagina kan openen, kan ze uitlezen. Let op dat een database dit níét oplost — die zou de gegevens alsnog aan de browser moeten geven. Het antwoord bepaalt de hostingplek, niet de opslagvorm. <span class="vlag vlag-keuze" style="margin-left:4px">keuze nodig</span></span>
+        </li>
+        <li>
+          <span class="kvraag">Houden we <code>data/posten.js</code> met de hand bij, of halen we hem uit de echte postenlijst?</span>
+          <span class="kuitleg">Met de hand: geen database, wel het risico dat openingstijden verouderen — en “binnen kantoortijd” bepaalt of iemand ’s nachts gebeld wordt. Automatisch: dan nog steeds liever een gegenereerd bestand in versiebeheer dan een database, want dan blijft de tool zonder server draaien en zie je in git wat er veranderde. <span class="vlag vlag-keuze" style="margin-left:4px">keuze nodig</span></span>
+        </li>
+        <li>
+          <span class="kvraag">Willen we tellen hoe vaak welke regel valt — en vooral hoe vaak het vangnet?</span>
+          <span class="kuitleg">Het spoor “Vertrouwen en dekking” gaat hierover. Regel 11 zegt nu: “Meld de combinatie bij de beheerder van de tool.” Dat gebeurt met de hand, dus waarschijnlijk zelden. Dit is het <b>enige</b> waarvoor een eigen database te verdedigen is. Zo ja: alleen regel-id, datum en logicaversie — géén antwoorden, géén land, geen naam. Zo nee: laat het bij een mailtje aan de beheerder. <span class="vlag vlag-keuze" style="margin-left:4px">keuze nodig</span></span>
+        </li>
+        <li>
+          <span class="kvraag">Mogen de letters van Google Fonts komen?</span>
+          <span class="kuitleg">Dat stuurt bij elke laadbeurt het IP-adres en de user-agent van de werkplek naar Google. Geen casusgegevens, maar wel een verzoek naar buiten. Alternatief: de twee fonts meeleveren in <code>assets/</code>. Geen opslagvraag, wel een datastroomvraag. <span class="vlag vlag-keuze" style="margin-left:4px">keuze nodig</span></span>
+        </li>
+        <li>
+          <span class="kvraag">Moet de tool íets onthouden tussen twee bellers?</span>
+          <span class="kuitleg">Denk aan het laatst gekozen land of het demomoment. Mijn advies: <b>nee</b>. En let op: dat zou <code>localStorage</code> vragen, en dat is écht opslag — het blijft op die werkplek staan tot iemand het wist, niet tot het tabblad dichtgaat. Nu gebruikt de tool geen enkele vorm van browseropslag; dat is een eigenschap die het waard is om te bewaken.</span>
+        </li>
+        <li>
+          <span class="kvraag">Komt er ooit een koppeling met Hermes?</span>
+          <span class="kuitleg">Dan schrijft de tool de notitie rechtstreeks in de Communication-tab in plaats van naar het klembord. Dat is een <b>Update in Hermes</b>, en nog steeds geen reden voor een eigen database. Het klembord vervalt dan als tussenstation — winst, want daar blijft de notitie nu staan tot je iets anders kopieert.</span>
+        </li>
+      </ol>
+    </div>
+
+    <h3 style="margin:30px 0 10px; font-size:1.15rem">Ontbrekende CRUD-acties</h3>
+    <div class="kaart">
+      <p style="margin-bottom:.6em">Er is er precies één die de use case echt nodig heeft:</p>
+      <p style="margin-bottom:.6em"><span class="crud"><b>U</b></span> <b>Update van de postgegevens.</b> De echte openingstijden moeten erin, en daarna bijgehouden blijven. Dat kan gewoon in <code>data/posten.js</code> in versiebeheer — daar is geen database voor nodig, wel een afspraak over wie het doet en hoe vaak. Zie keuze 1.</p>
+      <p style="margin:0">Verder ontbreekt er niets. Er is geen Create van casusgegevens nodig (die horen in Hermes), geen Read van eerdere gesprekken (de tool kent geen geschiedenis en hoeft die niet te kennen) en geen Delete (er staat niets om te verwijderen). <b>Ik heb geen functies toegevoegd om de vier letters vol te maken.</b></p>
+    </div>
+
+    <h3 style="margin:30px 0 10px; font-size:1.15rem">Voorbeeld van wat er naar het klembord gaat</h3>
+    <p class="leadin" style="margin-bottom:10px">Fictieve waarden — dit is niet uit een echt gesprek.</p>
+    <pre class="voorbeeld">Subject: Melding van overlijden - Overleggen met de DDA
+
+Vervolgstap volgens de filtertool: Overleggen met de DDA.
+Met wie: De DDA van de post in Spanje.
+Moment: zo 12 okt 23:40 (NL), bij het aanspreekpunt zo 12 okt 23:40
+
+Antwoorden:
+- Van wie komt de melding? Van een nabestaande of andere melder
+- Is de persoon al begraven of gecremeerd? Nee, nog niet
+- Waar is de beller? Spanje
+- In welk land is de persoon overleden? Zelfde land als de beller
+- Kantoortijd bij het aanspreekpunt: buiten kantoortijden
+
+Regel: Recent overleden, buiten kantoortijden (WI: Overlijden, stap 4 —
+Recent overleden, buiten lokale kantoortijden, filtertool 2.0)</pre>
+    <p style="margin-top:10px; font-size:.88rem; color:var(--inkt-zacht)">Merk op wat er <b>niet</b> in staat: geen naam, geen geboortedatum, geen telefoonnummer. De notitie beschrijft het besluit, niet de persoon. Dat is precies waarom de tool zelf niets hoeft te bewaren.</p>
+  </div>
+</section>
+
+<footer class="voet">
+  <div class="wrap">
+    <p>Gemaakt op basis van <code>STRATEGY.md</code>, <code>README.md</code>, <code>docs/beslislogica.md</code>, <code>index.html</code>, <code>demo-artifact.html</code>, <code>assets/app.js</code>, <code>data/beslislogica.js</code>, <code>data/aanspreekpunt.js</code> en <code>data/posten.js</code> op branch <code>claude/laughing-babbage-9znvnc</code>. Alle voorbeeldwaarden zijn verzonnen; er staan geen echte persoonsgegevens en geen wachtwoorden, sleutels of interne adressen in dit bestand. Dit overzicht verandert niets aan de werking van de tool.</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ---------------------------------------------------------- onderdelen */
+  var NODES = {
+    beller:      {naam:'De beller', sub:'Nabestaande, reisgenoot, werkgever — of de lokale autoriteiten', soort:'gebruiker', soortje:'gebruiker'},
+    voorlichter: {naam:'De voorlichter', sub:'Heeft de beller aan de lijn en bedient de tool', soort:'gebruiker', soortje:'gebruiker'},
+    beheerder:   {naam:'De beheerder van de werkinstructie', sub:'Past data/*.js aan als de WI verandert', soort:'gebruiker', soortje:'gebruiker'},
+
+    klok:        {naam:'Klok en tijdzones van de browser', sub:'Intl.DateTimeFormat plus de IANA-tijdzonedatabase van het besturingssysteem', soort:'extern', soortje:'externe bron', status:'gebouwd'},
+    hosting:     {naam:'GitHub Pages of de demopagina', sub:'Levert index.html, assets/ en data/ aan de browser. Waar het prototype mág draaien, is volgens STRATEGY.md nog onbevestigd', soort:'extern', soortje:'externe dienst', status:'strategie'},
+    postenbron:  {naam:'De echte postenlijst en de BOA', sub:'Bron van waarheid voor openingstijden, werkweken en DDA-nummers', soort:'extern', soortje:'externe bron', status:'strategie'},
+
+    fpost:       {naam:'data/posten.js', sub:'14 posten, casemanagement en 7 bijzondere plekken (Oekraïne, Caribische delen)', soort:'bestand', soortje:'bestand in de repo', status:'aanname'},
+    fwaar:       {naam:'data/aanspreekpunt.js', sub:'FILTERWAAR — zes soorten aanspreekpunt met tekst, DDA-benaming en verwijslinks', soort:'bestand', soortje:'bestand in de repo', status:'gebouwd'},
+    flogica:     {naam:'data/beslislogica.js', sub:'FILTERLOGICA v2.0 — 5 vragen, 11 regels, startscherm en checkvragen', soort:'bestand', soortje:'bestand in de repo', status:'gebouwd'},
+
+    pagina:      {naam:'index.html / demo-artifact.html', sub:'De lege pagina waarin de tool zichzelf opbouwt', soort:'app', soortje:'de app'},
+    invoer:      {naam:'state — het werkgeheugen', sub:'antwoorden, volgorde, postFilter, basis, gesimuleerd, klokOpen', soort:'app', soortje:'de app'},
+    rekenkern:   {naam:'De rekenkern — feiten()', sub:'isOpen(), volgendeOpening(), aanspreekpunt(), caribischePlek()', soort:'app', soortje:'de app'},
+    regels:      {naam:'De regelmachine — beoordeel()', sub:'Loopt de 11 regels van boven naar beneden; de eerste die past, wint', soort:'app', soortje:'de app'},
+    notitie:     {naam:'adviesAlsTekst()', sub:'Zet de uitkomst om in een notitie voor Hermes', soort:'app', soortje:'de app'},
+
+    scherm:      {naam:'Het scherm van de voorlichter', sub:'Vraagkaart, advieskaart, bereikbaarheid en “Waarom dit advies”', soort:'weergave', soortje:'weergave'},
+    klembord:    {naam:'Het klembord van de werkplek', sub:'Bewaart de notitie tot er iets anders gekopieerd wordt', soort:'opslag', soortje:'opslag buiten de app'},
+    hermes:      {naam:'Hermes', sub:'Het consulaire zaaksysteem — de case en de Communication-tab (stap 5)', soort:'externe-db', soortje:'externe database'},
+    links:       {naam:'Verwijspagina’s', sub:'Landenpagina’s, de BOA-app, de casemanager-regioverdeling, VNACS en het reisadvies', soort:'extern', soortje:'externe diensten'},
+    fonts:       {naam:'Google Fonts', sub:'fonts.googleapis.com en fonts.gstatic.com', soort:'extern', soortje:'externe dienst'},
+    git:         {naam:'De git-repository', sub:'Versiebeheer van data/*.js — hier staat de geschiedenis van de logica', soort:'opslag', soortje:'opslag'},
+    geendb:      {naam:'Een eigen database', sub:'Bestaat niet — en is voor deze use case ook niet nodig', soort:'leeg', soortje:'opslag'},
+    teller:      {naam:'Geanonimiseerde uitkomstteller', sub:'regel-id, datum en logicaversie — géén antwoorden, géén land, geen naam', soort:'voorstel', soortje:'opslag', status:'voorstel'}
+  };
+
+  /* -------------------------------------------------------------- banden */
+  var BANDEN = [
+    {
+      id:'hoofd', nr:'Band 1', titel:'Het telefoongesprek',
+      uitleg:'De hoofdstroom. De voorlichter heeft de beller aan de lijn, beantwoordt drie tot vijf vragen, en de tool rekent zelf uit hoe laat het bij het aanspreekpunt is. Alles wat hier links binnenkomt, verdwijnt rechts weer — behalve de notitie, die via het klembord in Hermes belandt.',
+      kolommen:[
+        {titel:'Waar de gegevens vandaan komen', nodes:['beller','voorlichter','klok','fpost','fwaar','flogica','hosting']},
+        {titel:'De filtertool in de browser', doos:'assets/app.js', nodes:['pagina','invoer','rekenkern','regels','notitie']},
+        {titel:'Waar ze terechtkomen', nodes:['scherm','klembord','hermes','links','fonts','geendb','teller']}
+      ]
+    },
+    {
+      id:'langs', nr:'Band 2', titel:'Langs de tool heen',
+      uitleg:'De gevoeligste gegevens uit het gesprek komen de filtertool niet in. De tool toont de checkvragenlijst uit stap 1, maar de antwoorden erop noteert de voorlichter rechtstreeks in Hermes. Dat is geen omissie — dat is het ontwerp.',
+      kolommen:[
+        {titel:'In het gesprek', nodes:['beller','voorlichter']},
+        {titel:'Waar ze heen gaan', nodes:['hermes','geendb']}
+      ]
+    },
+    {
+      id:'beheer', nr:'Band 3', titel:'De logica bijhouden',
+      uitleg:'Verandert de werkinstructie, of komt de echte postenlijst beschikbaar, dan verandert er niets aan de app — alleen aan de drie bestanden in data/. Versiebeheer is hier de opslag.',
+      kolommen:[
+        {titel:'Bron en beheerder', nodes:['postenbron','voorlichter','beheerder']},
+        {titel:'De databestanden', nodes:['fpost','flogica']},
+        {titel:'Opslag', nodes:['git']}
+      ]
+    }
+  ];
+
+  /* ------------------------------------------------------------ gegevens */
+  /* categorie: db | tijdelijk | elders | keuze
+     duurzaam: true = komt ergens duurzaam terecht (eigen DB, extern systeem,
+               versiebeheer) of is daar kandidaat voor.                      */
+  var GEGEVENS = [
+    {
+      id:'g1', band:'hoofd', naam:'De vijf antwoorden',
+      detail:'melder · begraven · bellerLand · overlijdenLand · familie',
+      route:['beller','voorlichter','invoer','rekenkern'],
+      categorie:'tijdelijk', duurzaam:false, status:'gebouwd',
+      crud:[], waar:'Nergens — alleen state.antwoorden in het geheugen van het tabblad',
+      huidig:'Niets opgeslagen: een JavaScript-object dat bij elk hertekenen opnieuw gelezen wordt.',
+      advies:'Zo laten. Niet naar een database, niet naar localStorage.',
+      blijft:'Na “Volgende beller”, Escape of herladen: niets.',
+      reden:'Dit zijn gegevens over één concreet overlijden en over wie het wel of niet weet. De tool heeft ze alleen nodig zolang het advies op het scherm staat; het dossier hoort in Hermes.'
+    },
+    {
+      id:'g2', band:'hoofd', naam:'Zoekterm in de postenlijst',
+      detail:'state.postFilter — wat de voorlichter in het zoekveld typt',
+      route:['voorlichter','invoer','scherm'],
+      categorie:'tijdelijk', duurzaam:false, status:'gebouwd',
+      crud:[], waar:'Nergens — filtert alleen de getoonde lijst',
+      huidig:'Wordt op nul gezet bij elk antwoord, elke stap terug en bij opnieuw beginnen.',
+      advies:'Zo laten.',
+      blijft:'Niets.',
+      reden:'Puur een hulpmiddel om sneller een land te vinden. Er zit geen informatie over de casus in.'
+    },
+    {
+      id:'g3', band:'hoofd', naam:'Gekozen demomoment',
+      detail:'state.basis en state.gesimuleerd — “doen alsof het zondagnacht is”',
+      route:['voorlichter','invoer','rekenkern'],
+      categorie:'tijdelijk', duurzaam:false, status:'gebouwd',
+      crud:[], waar:'Nergens — alleen in het geheugen van het tabblad',
+      huidig:'Verdwijnt bij herladen; de tool staat dan weer op de echte klok.',
+      advies:'Bewust niet onthouden.',
+      blijft:'Niets — en dat is de bedoeling.',
+      reden:'Een demomoment dat blijft hangen, laat de tool morgen met een verkeerde klok rekenen. Juist bij deze tool bepaalt de klok of iemand ’s nachts gebeld wordt.'
+    },
+    {
+      id:'g4', band:'hoofd', naam:'Huidige tijd en tijdzoneregels',
+      detail:'Systeemklok plus zomertijd- en tijdzoneregels via Intl.DateTimeFormat',
+      route:['klok','rekenkern'],
+      categorie:'elders', duurzaam:false, status:'gebouwd',
+      crud:['R'], waar:'Browser en besturingssysteem (IANA-tijdzonedatabase)',
+      huidig:'Bij elke berekening opnieuw uitgelezen; elke 30 seconden gecontroleerd of een post open- of dichtging.',
+      advies:'Nooit kopiëren. Tijdzone- en zomertijdregels veranderen; een kopie is per definitie verouderd.',
+      blijft:'Niets — de klok is er altijd al.',
+      reden:'De tool bestaat juist omdat de voorlichter niet hoeft te weten hoe laat het in Caïro is. Dat is een berekening, geen gegeven om te bewaren.'
+    },
+    {
+      id:'g5', band:'hoofd', naam:'Posten: tijdzone, werkweek, openingstijden, feestdagen',
+      detail:'14 posten, casemanagement, plus Oekraïne en de zes Caribische plekken',
+      route:['fpost','rekenkern','scherm'],
+      categorie:'elders', duurzaam:true, status:'aanname',
+      crud:['R'], waar:'Bestand in versiebeheer — gelezen bij het laden van de pagina',
+      huidig:'Voorbeeldwaarden. README en de voettekst van de tool zeggen dat er expliciet bij.',
+      advies:'In het bestand laten, niet naar een database kopiëren. Wel: de echte lijst erin, en een afspraak over bijhouden.',
+      blijft:'Blijft in de repo staan — dat hoort ook.',
+      reden:'Deze gegevens horen bij de tool, niet bij een gesprek. In een bestand in versiebeheer zie je wie wat wanneer veranderde, en de tool blijft zonder server draaien.',
+      let:'Zolang dit voorbeelddata is, is “binnen of buiten kantoortijd” een aanname — en daar hangt het hele DDA-besluit aan.'
+    },
+    {
+      id:'g6', band:'hoofd', naam:'Sjablonen voor het aanspreekpunt',
+      detail:'Zes soorten: casemanagement, post, waarnemend, regio, geen-bijstand, onbekend — met naam, DDA-benaming, uitleg en links',
+      route:['fwaar','rekenkern','scherm'],
+      categorie:'elders', duurzaam:true, status:'gebouwd',
+      crud:['R'], waar:'Bestand in versiebeheer',
+      huidig:'Gelezen bij het laden; {land} en {naam} worden ingevuld door bouwAanspreekpunt().',
+      advies:'In het bestand laten.',
+      blijft:'Blijft in de repo staan.',
+      reden:'Dit is de werkinstructie zelf, in gegevensvorm. Wie de WI beheert, moet het kunnen aanpassen zonder programmeur — een bestand kan dat, een database maakt het moeilijker.'
+    },
+    {
+      id:'g7', band:'hoofd', naam:'Vragen, regels en startteksten',
+      detail:'5 stappen, 11 regels, de SOS-waarschuwing, de kanaallinks, versie 2.0 en de datum',
+      route:['flogica','regels','scherm'],
+      categorie:'elders', duurzaam:true, status:'gebouwd',
+      crud:['R'], waar:'Bestand in versiebeheer — de C, U en D gebeuren in git (zie band 3)',
+      huidig:'Gelezen bij het laden. versie en bijgewerkt verschijnen onder elk advies.',
+      advies:'In het bestand laten.',
+      blijft:'Blijft in de repo staan, met de volledige geschiedenis.',
+      reden:'Een advies moet later navolgbaar zijn: op welke versie van de logica was het gebaseerd? Git beantwoordt die vraag al.'
+    },
+    {
+      id:'g21', band:'hoofd', naam:'De checkvragenlijst (stap 1)',
+      detail:'Negen vragen die de voorlichter bij de hand heeft — de lijst, niet de antwoorden',
+      route:['flogica','pagina','scherm'],
+      categorie:'elders', duurzaam:true, status:'gebouwd',
+      crud:['R'], waar:'Bestand in versiebeheer',
+      huidig:'Uitklapbaar op het startscherm. De tool doet niets met de antwoorden.',
+      advies:'Zo laten — dit is precies de goede scheiding.',
+      blijft:'De lijst blijft in de repo; de antwoorden komen de tool niet in.',
+      reden:'De tool toont een geheugensteun. Zodra hij die antwoorden zou opslaan, wordt hij een tweede dossier naast Hermes.'
+    },
+    {
+      id:'g8', band:'hoofd', naam:'Afgeleide feiten',
+      detail:'caribisch · aanspreekpunt · kantoortijd — uitgerekend uit de antwoorden, de klok en de postenlijst',
+      route:['rekenkern','regels','scherm'],
+      categorie:'tijdelijk', duurzaam:false, status:'gebouwd',
+      crud:[], waar:'Nergens — bij elk hertekenen opnieuw berekend',
+      huidig:'feiten() rekent ze elke keer opnieuw uit; kantoortijd staat onder “Waarom dit advies”.',
+      advies:'Nooit opslaan.',
+      blijft:'Niets.',
+      reden:'Een opgeslagen “kantoortijd: ja” is binnen een uur onjuist. De waarde van deze tool zit er juist in dat hij hem nú uitrekent.'
+    },
+    {
+      id:'g9', band:'hoofd', naam:'Het advies op het scherm',
+      detail:'Kop, met wie, doenlijst, “Loopt het anders?”, bereikbaarheid, waarom, grondslag en versie',
+      route:['regels','scherm','voorlichter'],
+      categorie:'tijdelijk', duurzaam:false, status:'gebouwd',
+      crud:[], waar:'Nergens — teken() bouwt het scherm elke keer opnieuw op',
+      huidig:'Bestaat alleen zolang het op het scherm staat.',
+      advies:'Niet opslaan. Wat vastgelegd moet worden, gaat via de notitie naar Hermes.',
+      blijft:'Niets.',
+      reden:'Het advies is volledig reproduceerbaar uit dezelfde antwoorden plus het logicaversienummer. Twee plekken met hetzelfde besluit is één te veel.'
+    },
+    {
+      id:'g10', band:'hoofd', naam:'Mondeling advies aan de beller',
+      detail:'“Mag ik u in de wacht zetten? Ik overleg even met een collega.”',
+      route:['voorlichter','beller'],
+      categorie:'tijdelijk', duurzaam:false, status:'gebouwd',
+      crud:[], waar:'Nergens — het gesprek zelf',
+      huidig:'Gebeurt buiten elk systeem om.',
+      advies:'Geen actie.',
+      blijft:'Niets.',
+      reden:'Opgenomen in dit overzicht omdat het de bestemming van de hele stroom is: het hele ding bestaat om deze ene zin op het goede moment te laten uitspreken.'
+    },
+    {
+      id:'g11', band:'hoofd', naam:'De notitie voor Hermes',
+      detail:'Uitkomst, met wie, moment (NL en bij het aanspreekpunt), de gegeven antwoorden, de regelnaam en de versie',
+      route:['regels','notitie','klembord','hermes'],
+      categorie:'elders', duurzaam:true, status:'aanname',
+      crud:['C','U'], waar:'Hermes — de case en de Communication-tab (stap 5). Handmatig geplakt.',
+      huidig:'navigator.clipboard.writeText(); lukt dat niet, dan een window.prompt om met Ctrl/Cmd+C te kopiëren.',
+      advies:'Niet ook nog in een eigen database. Hermes is het dossier.',
+      blijft:'In Hermes: blijvend. Op het klembord: tot er iets anders gekopieerd wordt — ook nadat het tabblad dicht is.',
+      reden:'Stap 5 van de instructie zegt dat de afronding in de Communication-tab genoteerd wordt. Dat is de plek waar het besluit thuishoort, en die bestaat al.',
+      let:'Het klembord is opslag, geen werkgeheugen. De notitie bevat geen naam of geboortedatum, maar wel het land en de situatie.'
+    },
+    {
+      id:'g12', band:'hoofd', naam:'Klik op een verwijslink',
+      detail:'Landenpagina’s, de BOA-app, de casemanager-regioverdeling, VNACS, het reisadvies, de werkinstructies',
+      route:['scherm','links'],
+      categorie:'elders', duurzaam:false, status:'gebouwd',
+      crud:['R'], waar:'De externe site zelf — in een nieuw tabblad (target="_blank" rel="noopener")',
+      huidig:'Alleen de klik gaat mee. Geen antwoord, geen land, geen casusgegeven in de URL.',
+      advies:'Zo laten. De tool houdt bewust geen telefoonnummers bij; die staan in de client en de BOA.',
+      blijft:'Niets bij ons.',
+      reden:'Nummers en waarneemafspraken veranderen. Doorverwijzen naar de bron die er al is, is betrouwbaarder dan een kopie in de tool.'
+    },
+    {
+      id:'g13', band:'hoofd', naam:'Lettertypeverzoek naar Google Fonts',
+      detail:'IP-adres en user-agent van de werkplek — géén casusgegevens',
+      route:['pagina','fonts'],
+      categorie:'keuze', duurzaam:false, status:'gebouwd',
+      crud:[], waar:'Bij ons niets. Wat Google ermee doet, is niet aan ons te zien.',
+      huidig:'Niet-blokkerend geladen; zonder netwerk rendert de tool meteen met de systeemletters.',
+      advies:'Overweeg de twee fonts mee te leveren in assets/. Dan gaat er bij het gebruik van de tool niets meer naar buiten.',
+      blijft:'Niets bij ons.',
+      reden:'Geen opslagvraag, wel een datastroomvraag: elke laadbeurt is een verzoek naar een Amerikaanse dienst vanaf een werkplek van het ministerie.',
+      vraag:'Mogen de letters van een CDN komen, of hosten we ze zelf mee?'
+    },
+    {
+      id:'g14', band:'hoofd', naam:'Wissen bij de volgende beller',
+      detail:'“Volgende beller”, Escape, of gewoon herladen',
+      route:['voorlichter','invoer'],
+      categorie:'tijdelijk', duurzaam:false, status:'gebouwd',
+      crud:[], waar:'Nergens — state.antwoorden en state.volgorde worden leeggemaakt',
+      huidig:'opnieuw() zet alles op nul; er valt niets te verwijderen want er is niets bewaard.',
+      advies:'Zo laten.',
+      blijft:'Niets.',
+      reden:'Dit lijkt op Delete, maar is het niet: er wordt geen opgeslagen gegeven verwijderd, er wordt werkgeheugen leeggemaakt. Dat het geen echte Delete is, is precies de opbrengst van niets bewaren.'
+    },
+    {
+      id:'g20', band:'hoofd', naam:'De bestanden van de tool zelf',
+      detail:'index.html of demo-artifact.html, assets/app.js, assets/styles.css, data/*.js',
+      route:['hosting','pagina'],
+      categorie:'elders', duurzaam:true, status:'strategie',
+      crud:['R'], waar:'De hostingplek (GitHub Pages of de demopagina)',
+      huidig:'Statische bestanden. Geen build, geen server, geen API — de strategie stelt als randvoorwaarde dat er alleen in de browser gebouwd kan worden, zonder lokale ontwikkelsoftware.',
+      advies:'Zo laten zolang het doel een demonstreerbaar prototype is. Voor intern gebruik is een interne plek nodig; dat is volgens de strategie nog onbevestigd.',
+      blijft:'De bestanden blijven staan waar ze staan.',
+      reden:'Een tool zonder server is een tool zonder database, zonder beheercontract en zonder inlog. Bij het spoor “Snelheid in de wachtstand” is dat geen tekortkoming maar een eigenschap: elke inlog of opslagstap kost seconden die de voorlichter in de wachtstand niet heeft.'
+    },
+    {
+      id:'g22', band:'hoofd', naam:'De databestanden zijn leesbaar voor elke bezoeker',
+      detail:'data/posten.js en data/beslislogica.js worden als gewone tekst meegestuurd naar de browser — openingstijden, de 11 regels, de DDA-route, de interne verwijslinks',
+      route:['fpost','pagina'],
+      categorie:'keuze', duurzaam:true, status:'strategie',
+      crud:['R'], waar:'De hostingplek — iedereen die de pagina kan openen, kan de bestanden uitlezen',
+      huidig:'Daarom staan er nu bewust fictieve openingstijden in. De verwijslinks naar de BOA en de casemanager-regioverdeling staan er wél gewoon in.',
+      advies:'Beantwoord eerst de vraag uit de strategie. Geldt dit als interne data, dan bepaalt dat de hostingplek — niet de opslagvorm. Een database lost dit niet op: die zou de gegevens juist alsnog aan de browser moeten geven.',
+      blijft:'Blijft in de repo en op de hostingplek staan, zichtbaar voor wie de pagina opent.',
+      reden:'Dit is de open vraag uit STRATEGY.md: “of de beslislogica en de openingstijden van posten als interne data gelden en waar het prototype mag draaien”. Zolang die openstaat, werkt de tool met fictieve of publieke voorbeelden.',
+      vraag:'Gelden de beslislogica en de openingstijden als interne data? En waar mag het prototype dan draaien?'
+    },
+    {
+      id:'g19', band:'hoofd', naam:'Geanonimiseerde uitkomstteller',
+      detail:'regel-id, datum, logicaversie — géén antwoorden, géén land, geen naam',
+      route:['regels','teller'],
+      categorie:'keuze', duurzaam:true, status:'voorstel',
+      crud:['C'], waar:'Zou een eigen database of logbestand vragen — bestaat nu niet',
+      huidig:'Bestaat niet. Er is geen enkele vorm van logging of telemetrie in de code.',
+      advies:'Alleen bouwen als je de vraag “hoe vaak valt het vangnet?” echt wilt beantwoorden. Anders niet.',
+      blijft:'Zou blijvend zijn — daarom hoort er ook een bewaartermijn bij.',
+      reden:'Dit is het enige waarvoor een eigen database te verdedigen is. Regel 11 zegt nu “meld dit bij de beheerder”, en dat gebeurt met de hand, dus waarschijnlijk zelden.',
+      vraag:'Willen we tellen hoe vaak welke regel valt? Zo ja: welke velden precies, en hoe lang bewaard?'
+    },
+
+    {
+      id:'g15', band:'langs', naam:'Checkvraag-gegevens',
+      detail:'Naam en geboortedatum van de overledene, relatie tot de overledene, naam en telefoonnummer en e-mailadres van de beller, plaats en datum van overlijden, waar het lichaam is',
+      route:['beller','voorlichter','hermes'],
+      categorie:'elders', duurzaam:true, status:'aanname',
+      crud:['C','R','U'], waar:'Hermes — stap 2 (zoeken), stap 3 (case aanmaken of aanvullen), stap 5 (afronding noteren)',
+      huidig:'Komen de filtertool niet in. De tool toont alleen de lijst met checkvragen.',
+      advies:'Zo houden. Dit is de belangrijkste ontwerpkeuze in het hele plaatje.',
+      blijft:'In Hermes: blijvend, daar hoort het. In de tool: niets, ook niet tijdelijk.',
+      reden:'Dit zijn persoonsgegevens over een overlijden. Er bestaat al een zaaksysteem met beheer, autorisatie en bewaartermijnen. Een tweede plek waar ze staan is een tweede plek waar ze kunnen lekken.',
+      let:'Aanname: er is geen koppeling tussen de tool en Hermes; de voorlichter typt en plakt met de hand.'
+    },
+
+    {
+      id:'g16', band:'beheer', naam:'Echte openingstijden en werkweken',
+      detail:'Per post: tijdzone, uren per dag, pauzes, lokale feestdagen, DDA-bereikbaarheid',
+      route:['postenbron','beheerder','fpost','git'],
+      categorie:'keuze', duurzaam:true, status:'strategie',
+      crud:['U'], waar:'data/posten.js in versiebeheer',
+      huidig:'Voorbeeldwaarden; de echte lijst zit er nog niet in. Bijwerken gebeurt met de hand.',
+      advies:'Ook als je het automatiseert: lever het aan als gegenereerd bestand in versiebeheer, niet als database. Dan blijft de tool zonder server draaien en zie je in git wat er veranderde.',
+      blijft:'Blijft in de repo, met geschiedenis.',
+      reden:'Dit is de enige CRUD-actie die de use case echt mist. Aan “binnen of buiten kantoortijd” hangt of iemand ’s nachts gebeld wordt.',
+      vraag:'Met de hand bijhouden, of periodiek uit de echte postenlijst genereren? En hoe vaak controleren we het?'
+    },
+    {
+      id:'g17', band:'beheer', naam:'Gewijzigde regels, teksten en versienummer',
+      detail:'De 11 regels, de vraagteksten, de sjablonen — plus versie en bijgewerkt',
+      route:['beheerder','flogica','git'],
+      categorie:'elders', duurzaam:true, status:'gebouwd',
+      crud:['C','U','D'], waar:'git — versiebeheer is hier de opslag',
+      huidig:'De beheerder past data/*.js aan en hoogt versie en bijgewerkt op. Die twee staan onder elk advies.',
+      advies:'Zo laten. Geen redactieomgeving, geen database.',
+      blijft:'Alles, inclusief de geschiedenis van elke wijziging.',
+      reden:'docs/beslislogica.md beschrijft dezelfde logica in woorden, om naast de instructie te leggen. Die twee bij elkaar houden is belangrijker dan een mooi beheerscherm.'
+    },
+    {
+      id:'g18', band:'beheer', naam:'Melding van het vangnet',
+      detail:'“Deze combinatie staat niet in de instructie” — regel 11 vraagt de voorlichter dit te melden',
+      route:['voorlichter','beheerder'],
+      categorie:'keuze', duurzaam:false, status:'gebouwd',
+      crud:[], waar:'Nu nergens — mondeling of per mail, buiten elk systeem om',
+      huidig:'De regeltekst zegt: “Meld de combinatie bij de beheerder van de tool.” Verder gebeurt er niets.',
+      advies:'Of accepteren dat dit met de hand gaat, of de teller uit keuze 2 bouwen. Niet halverwege blijven hangen.',
+      blijft:'Niets.',
+      reden:'Het vangnet is het signaal dat de logica een gat heeft. Als niemand dat signaal opvangt, blijft het gat bestaan.',
+      vraag:'Vertrouwen we op een melding met de hand, of willen we dit geteld zien?'
+    }
+  ];
+
+  var CATLABEL = {db:'eigen database', tijdelijk:'tijdelijk', elders:'staat al elders', keuze:'keuze nodig'};
+
+  /* ------------------------------------------------------------ hulpjes */
+  function el(tag, klasse, tekst){
+    var n = document.createElement(tag);
+    if (klasse) n.className = klasse;
+    if (tekst !== undefined && tekst !== null) n.textContent = tekst;
+    return n;
+  }
+  function vlagVoor(cat){ return el('span','vlag vlag-'+cat, CATLABEL[cat]); }
+  function statusVoor(st){
+    if (!st) return null;
+    var tekst = {gebouwd:'gebouwd', strategie:'alleen in de strategie', aanname:'aanname', voorstel:'voorstel'}[st];
+    return el('span','status status-'+st, tekst);
+  }
+  function crudVoor(lijst){
+    var doos = el('span','crud');
+    if (!lijst || !lijst.length){ doos.appendChild(el('b','geen','geen databaseactie')); return doos; }
+    lijst.forEach(function(letter){ doos.appendChild(el('b',null,letter)); });
+    return doos;
+  }
+
+  /* --------------------------------------------------------- toestand */
+  var filter = 'alle';
+  var selectie = null;   /* id van een gegeven, of null */
+
+  function zichtbaar(g){
+    if (filter === 'alle') return true;
+    if (filter === 'db') return g.duurzaam === true;
+    return g.duurzaam === false;
+  }
+
+  /* ---------------------------------------------- diagram: pijlen bouwen */
+  function kolomIndexen(band){
+    var kaart = {};
+    band.kolommen.forEach(function(k, i){ k.nodes.forEach(function(id){ if (kaart[id] === undefined) kaart[id] = i; }); });
+    return kaart;
+  }
+
+  /* Een pijl per opeenvolgend paar in de route. */
+  function pijlenVan(band){
+    var idx = kolomIndexen(band);
+    var uit = [];
+    GEGEVENS.filter(function(g){ return g.band === band.id; }).forEach(function(g){
+      for (var i = 0; i < g.route.length - 1; i++){
+        var van = g.route[i], naar = g.route[i+1];
+        if (idx[van] === undefined || idx[naar] === undefined) continue;
+        uit.push({gegeven:g, van:van, naar:naar, vanKol:idx[van], naarKol:idx[naar], stap:i});
+      }
+    });
+    return uit;
+  }
+
+  function tekenPijl(p, soort){
+    var g = p.gegeven;
+    var knop = el('button','pijl c-'+g.categorie+(soort ? ' '+soort : ''));
+    knop.type = 'button';
+    knop.dataset.gegeven = g.id;
+
+    var terug = soort && soort.indexOf('terug') !== -1;
+    var lijn = el('div','lijn');
+    lijn.appendChild(el('span','van', NODES[p.van].naam));
+    lijn.appendChild(el('i'));
+    lijn.appendChild(el('span','punt', terug ? '↩' : '▶'));
+    lijn.appendChild(el('span','naar', NODES[p.naar].naam));
+    knop.appendChild(lijn);
+
+    knop.appendChild(el('span','wat', g.naam));
+    knop.appendChild(el('span','mee', g.detail));
+
+    var onder = el('div','onderrand');
+    onder.appendChild(crudVoor(g.crud));
+    onder.appendChild(vlagVoor(g.categorie));
+    var st = statusVoor(g.status);
+    if (st && g.status !== 'gebouwd') onder.appendChild(st);
+    knop.appendChild(onder);
+
+    knop.addEventListener('click', function(){ kies(g.id); });
+    return knop;
+  }
+
+  function tekenKnoop(id){
+    var n = NODES[id];
+    var knop = el(n.soort === 'leeg' ? 'div' : 'button','knoop s-'+n.soort);
+    if (n.soort !== 'leeg') knop.type = 'button';
+    knop.dataset.knoop = id;
+    knop.appendChild(el('span','soortje', n.soortje));
+    knop.appendChild(el('span','naam', n.naam));
+    knop.appendChild(el('span','sub', n.sub));
+    if (n.status && n.status !== 'gebouwd'){
+      var v = el('div','vlaggen');
+      v.appendChild(statusVoor(n.status));
+      knop.appendChild(v);
+    }
+    if (n.soort !== 'leeg'){
+      knop.addEventListener('click', function(){ kiesKnoop(id); });
+    }
+    return knop;
+  }
+
+  function tekenDiagram(){
+    var doel = document.getElementById('diagram');
+    doel.textContent = '';
+
+    BANDEN.forEach(function(band){
+      var pijlen = pijlenVan(band);
+      var doos = el('div','band');
+      doos.dataset.band = band.id;
+
+      var kop = el('div','band-kop');
+      kop.appendChild(el('span','bandnr', band.nr));
+      kop.appendChild(el('h3',null,band.titel));
+      doos.appendChild(kop);
+      doos.appendChild(el('p','band-uitleg', band.uitleg));
+
+      var scroll = el('div','diagram-scroll');
+      var raster = el('div','raster k'+band.kolommen.length);
+
+      band.kolommen.forEach(function(kolom, i){
+        var kol = el('div','kolom');
+        kol.appendChild(el('div','kolom-kop', kolom.titel));
+
+        var houder = kol;
+        if (kolom.doos){
+          var appdoos = el('div','appdoos');
+          appdoos.appendChild(el('div','doosnaam', kolom.doos));
+          kol.appendChild(appdoos);
+          houder = appdoos;
+        }
+
+        kolom.nodes.forEach(function(id){
+          houder.appendChild(tekenKnoop(id));
+          /* pijlen binnen deze kolom, en terugpijlen, hangen onder hun bron */
+          pijlen.filter(function(p){ return p.van === id && p.vanKol === i && p.naarKol <= i; })
+                .forEach(function(p){ houder.appendChild(tekenPijl(p, p.naarKol < i ? 'binnen terug' : 'binnen')); });
+        });
+        raster.appendChild(kol);
+
+        if (i < band.kolommen.length - 1){
+          var goot = el('div','goot');
+          pijlen.filter(function(p){ return p.vanKol === i && p.naarKol > i; })
+                .forEach(function(p){ goot.appendChild(tekenPijl(p)); });
+          raster.appendChild(goot);
+        }
+      });
+
+      scroll.appendChild(raster);
+      doos.appendChild(scroll);
+      doel.appendChild(doos);
+    });
+  }
+
+  /* ---------------------------------------------------------- matrix */
+  function routeCel(g){
+    var doos = el('div','route');
+    g.route.forEach(function(id, i){
+      if (i) doos.appendChild(el('span','pijltje','→'));
+      doos.appendChild(el('b',null,NODES[id].naam));
+    });
+    return doos;
+  }
+
+  function tekenMatrix(){
+    var doel = document.getElementById('matrix');
+    doel.textContent = '';
+    GEGEVENS.forEach(function(g){
+      var tr = el('tr');
+      tr.dataset.gegeven = g.id;
+
+      var td1 = el('td'); td1.dataset.label = 'Gegeven';
+      td1.appendChild(el('span','gnaam', g.naam));
+      td1.appendChild(el('span','gdetail', g.detail));
+      var vl = el('div','vlaggen'); vl.style.marginTop = '8px';
+      vl.appendChild(vlagVoor(g.categorie));
+      var st = statusVoor(g.status); if (st) vl.appendChild(st);
+      td1.appendChild(vl);
+      tr.appendChild(td1);
+
+      var td2 = el('td'); td2.dataset.label = 'Bron → verwerking → bestemming';
+      td2.appendChild(routeCel(g));
+      tr.appendChild(td2);
+
+      var td3 = el('td','crud-kolom'); td3.dataset.label = 'CRUD & waar';
+      td3.appendChild(crudVoor(g.crud));
+      td3.appendChild(el('span','blijft', g.waar));
+      tr.appendChild(td3);
+
+      var td4 = el('td'); td4.dataset.label = 'Opslagkeuze';
+      var nu = el('span','adv'); nu.appendChild(el('b',null,'Nu: ')); nu.appendChild(document.createTextNode(g.huidig));
+      td4.appendChild(nu);
+      var ad = el('span','adv'); ad.appendChild(el('b',null,'Advies: ')); ad.appendChild(document.createTextNode(g.advies));
+      td4.appendChild(ad);
+      tr.appendChild(td4);
+
+      var td5 = el('td'); td5.dataset.label = 'Reden & wat er blijft';
+      td5.appendChild(document.createTextNode(g.reden));
+      if (g.let){ var l = el('span','reden'); l.appendChild(el('b',null,'Let op: ')); l.appendChild(document.createTextNode(g.let)); td5.appendChild(l); }
+      td5.appendChild(el('span','blijft','Na afsluiten of herladen — ' + g.blijft));
+      if (g.vraag) td5.appendChild(el('span','vraagje','Te beantwoorden: ' + g.vraag));
+      tr.appendChild(td5);
+
+      tr.addEventListener('click', function(){ kies(g.id); });
+      doel.appendChild(tr);
+    });
+  }
+
+  /* ------------------------------------------------------- bijwerken */
+  function pasToe(){
+    var zichtbareIds = {};
+    GEGEVENS.forEach(function(g){ if (zichtbaar(g)) zichtbareIds[g.id] = true; });
+
+    /* route van de selectie: welke knopen horen erbij? */
+    var route = {};
+    if (selectie){
+      var g = GEGEVENS.filter(function(x){ return x.id === selectie; })[0];
+      if (g) g.route.forEach(function(id){ route[id] = true; });
+    }
+
+    /* pijlen */
+    var levendeKnopen = {};
+    Array.prototype.forEach.call(document.querySelectorAll('.pijl'), function(p){
+      var id = p.dataset.gegeven;
+      var aan = !!zichtbareIds[id];
+      var gekozen = selectie && selectie === id;
+      p.classList.toggle('gedimd', Boolean(!aan || (selectie && !gekozen)));
+      p.setAttribute('data-actief', gekozen ? 'true' : 'false');
+      if (aan){
+        var gg = GEGEVENS.filter(function(x){ return x.id === id; })[0];
+        gg.route.forEach(function(n){ levendeKnopen[n] = true; });
+      }
+    });
+
+    /* knopen: zichtbaar als er nog een zichtbare stroom langskomt.
+       Bij een selectie blijft de hele route van dat gegeven oplichten. */
+    Array.prototype.forEach.call(document.querySelectorAll('.knoop'), function(k){
+      var id = k.dataset.knoop;
+      var aan = !!levendeKnopen[id] || id === 'geendb';
+      var opRoute = !!route[id];
+      k.classList.toggle('gedimd', Boolean(!aan || (selectie && !opRoute)));
+      k.setAttribute('data-actief', opRoute ? 'true' : 'false');
+    });
+
+    /* matrix */
+    var zichtbaarAantal = 0;
+    Array.prototype.forEach.call(document.querySelectorAll('#matrix tr'), function(tr){
+      var id = tr.dataset.gegeven;
+      var aan = !!zichtbareIds[id];
+      tr.hidden = !aan;
+      if (aan) zichtbaarAantal++;
+      tr.setAttribute('data-actief', (selectie && selectie === id) ? 'true' : 'false');
+    });
+
+    /* lege banden verbergen */
+    Array.prototype.forEach.call(document.querySelectorAll('.band'), function(b){
+      var nog = Array.prototype.some.call(b.querySelectorAll('.pijl'), function(p){ return !p.classList.contains('gedimd'); });
+      b.hidden = !nog && filter !== 'alle' && !selectie;
+    });
+
+    /* meldingen */
+    var leegD = document.getElementById('diagramLeeg');
+    var leegM = document.getElementById('matrixLeeg');
+    if (filter === 'db' && zichtbaarAantal){
+      var tekst = 'Let op: er staat op dit moment géén enkel gegeven in een eigen database. Wat je hier ziet, is de opslag die buiten de app al bestaat (Hermes, de bestanden in versiebeheer) plus de drie twijfelgevallen waarover nog een keuze nodig is.';
+      leegD.textContent = tekst; leegD.hidden = false;
+      leegM.hidden = true;
+    } else if (!zichtbaarAantal){
+      leegD.textContent = 'Geen enkel gegeven valt in deze categorie.';
+      leegD.hidden = false; leegM.hidden = true;
+    } else {
+      leegD.hidden = true; leegM.hidden = true;
+    }
+
+    var telling = document.getElementById('telling');
+    telling.textContent = zichtbaarAantal + ' van ' + GEGEVENS.length + ' gegevens' +
+      (selectie ? ' · route opgelicht' : '');
+  }
+
+  function kies(id){
+    selectie = (selectie === id) ? null : id;
+    pasToe();
+    if (selectie){
+      var rij = document.querySelector('#matrix tr[data-gegeven="' + selectie + '"]');
+      if (rij && !rij.hidden) rij.scrollIntoView({block:'center', behavior:'smooth'});
+    }
+  }
+
+  /* Een knoop aanklikken kiest de eerste zichtbare stroom die erlangs loopt. */
+  function kiesKnoop(id){
+    var kandidaten = GEGEVENS.filter(function(g){ return zichtbaar(g) && g.route.indexOf(id) !== -1; });
+    if (!kandidaten.length) return;
+    var huidige = kandidaten.map(function(g){ return g.id; }).indexOf(selectie);
+    selectie = kandidaten[(huidige + 1) % kandidaten.length].id;
+    pasToe();
+  }
+
+  /* ------------------------------------------------------------ knoppen */
+  Array.prototype.forEach.call(document.querySelectorAll('button.filter'), function(k){
+    k.addEventListener('click', function(){
+      filter = k.dataset.filter;
+      selectie = null;
+      Array.prototype.forEach.call(document.querySelectorAll('button.filter'), function(a){
+        a.setAttribute('aria-pressed', String(a === k));
+      });
+      pasToe();
+    });
+  });
+
+  var crudKnop = document.getElementById('crudKnop');
+  crudKnop.addEventListener('click', function(){
+    var aan = crudKnop.getAttribute('aria-pressed') === 'true';
+    crudKnop.setAttribute('aria-pressed', String(!aan));
+    crudKnop.textContent = !aan ? 'CRUD-labels aan' : 'CRUD-labels uit';
+    document.body.classList.toggle('crud-uit', aan);
+  });
+
+  document.getElementById('wisKnop').addEventListener('click', function(){
+    selectie = null;
+    pasToe();
+  });
+
+  tekenDiagram();
+  tekenMatrix();
+  pasToe();
+})();
+</script>
+</body>
+</html>
