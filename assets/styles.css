@@ -9,6 +9,12 @@
   --tekst: #000000;
   --grijs: #696969;
   --rand: #b4b4b4;
+  /* De banner: het blauw van de koptekst en de lucht waar hij op staat. Wil je
+     een foto in plaats van de tekening, zet die dan in assets/ en verwijs
+     --banner-lucht ernaar. Kies een foto zónder tekst: de tekst van de banner
+     staat in de HTML en blijft zo scherp, selecteerbaar en voorleesbaar. */
+  --bannerblauw: #1668b0;
+  --banner-lucht: url("banner-lucht.svg");
   --direct: #d52b1e;
   --overleg: #007bc7;
   --geen: #39870c;
@@ -37,6 +43,80 @@ body {
   padding-bottom: 28px;
   border-bottom: 4px solid var(--blauw);
 }
+
+/* ----------------------------------------------------------------- banner */
+
+/* Lucht, wolken en een trap naar het licht (assets/banner-lucht.svg), met de
+   tekst er als gewone HTML overheen. De banner staat buiten #app, zodat de
+   tool zichzelf eronder opbouwt zonder hem te overschrijven. */
+
+.banner {
+  background-color: #8ec5ee;
+  background-image: var(--banner-lucht);
+  background-repeat: no-repeat;
+  background-position: 50% 100%;
+  background-size: cover;
+}
+
+.banner-binnen {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  max-width: 1040px;
+  min-height: clamp(150px, 16vw, 232px);
+  margin: 0 auto;
+  padding: 26px 20px;
+}
+
+.bannerkop {
+  margin: 0;
+  color: var(--donkerblauw);
+  font-size: clamp(27px, 4.3vw, 52px);
+  font-weight: 700;
+  line-height: 1.04;
+  letter-spacing: -.01em;
+}
+
+.bannertool {
+  margin: 4px 0 0;
+  color: var(--bannerblauw);
+  font-size: clamp(17px, 2.5vw, 30px);
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.bannerbelofte {
+  margin: 10px 0 0;
+  color: #2c6ea9;
+  font-size: clamp(13px, 1.55vw, 19px);
+  font-style: italic;
+  line-height: 1.3;
+}
+
+/* Rechts de drie woorden, een streepje en de afsluiter — zoals op het
+   briefpapier. Op een smal scherm is er geen ruimte voor; dan vervalt hij. */
+.bannermerk {
+  flex: none;
+  margin: 0;
+  color: var(--donkerblauw);
+  font-size: clamp(11px, 1.05vw, 15px);
+  font-weight: 600;
+  letter-spacing: .2em;
+  line-height: 1.85;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.bannerstreep {
+  display: block;
+  width: 46px;
+  height: 1px;
+  margin: 12px 0 12px auto;
+  background: var(--donkerblauw);
+}
+
+.bannerslot { display: block; }
 
 /* ------------------------------------------------------------------- balk */
 
@@ -221,8 +301,13 @@ body {
 
 /* ------------------------------------------------------------------ smal */
 
+@media (max-width: 720px) {
+  .bannermerk { display: none; }
+}
+
 @media (max-width: 480px) {
   #app { padding: 28px 16px; }
+  .banner-binnen { padding: 22px 16px; }
   .vraag, .advieskop { font-size: 24px; }
   .balk { margin-bottom: 32px; }
   .opties { margin-top: 26px; }

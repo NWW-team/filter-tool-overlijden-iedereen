@@ -346,7 +346,7 @@
 
     var doos = el('div', 'advies niveau-' + advies.niveau);
     doos.tabIndex = -1;
-    doos.appendChild(el('h1', 'advieskop', advies.kop));
+    doos.appendChild(el('h2', 'advieskop', advies.kop));
 
     var metWie = el('p', 'metwie');
     metWie.appendChild(el('span', 'metwie-label', 'Overleg met'));
