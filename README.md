@@ -43,16 +43,35 @@ te publiceren. Alleen de omslag verschilt; de tool zelf staat in `assets/` en
 ## Hoe het in elkaar zit
 
 ```
-index.html              het scherm (leeg; de tool bouwt zichzelf op)
+index.html              het scherm: de banner, en daaronder bouwt de tool zichzelf op
 demo-artifact.html      dezelfde tool, als deelbare demopagina
 assets/app.js           de motor: vragen stellen, regels toepassen, tekenen
 assets/styles.css       vormgeving
+assets/banner-lucht.svg de lucht achter de banner (gegenereerd)
 data/beslislogica.js    de vragen, de aanspreekpunten en de regels
 data/landen.js          landcode → tijdzone (gegenereerd, niet met de hand aanpassen)
 tools/landen-genereren.js  maakt data/landen.js uit de IANA-tijdzonedatabase
+tools/banner-lucht-genereren.py  maakt assets/banner-lucht.svg
 docs/beslislogica.md    alles in woorden, om naast de instructies te leggen
 datastromen.html        achtergrondpagina over een eerdere, uitgebreidere versie
 ```
+
+## De banner
+
+Boven de tool staat een banner: **Overlijdensgeval in het buitenland**, met
+daaronder waar de tool voor is. De lucht met de trap naar het licht is geen
+foto maar een tekening, `assets/banner-lucht.svg`, gemaakt door
+`python3 tools/banner-lucht-genereren.py`. Pas die SVG niet met de hand aan —
+draai het script opnieuw.
+
+De tekst van de banner zit niet in de afbeelding maar gewoon in `index.html`
+en `demo-artifact.html`. Zo blijft ze op elk scherm scherp, is ze te
+selecteren en leest een schermlezer haar voor. Op een smal scherm vervalt de
+kolom rechts ("Service, Bescherming, Verbinding"); de kop blijft staan.
+
+Wil je een foto in plaats van de tekening, zet die dan in `assets/` en laat
+`--banner-lucht` bovenin `assets/styles.css` ernaar wijzen. Kies een foto
+zónder tekst erin: de tekst komt er in HTML overheen.
 
 ## De logica aanpassen
 
