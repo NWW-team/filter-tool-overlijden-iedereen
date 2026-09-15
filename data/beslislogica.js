@@ -8,9 +8,9 @@
  *   kantoortijd kan. Dat zijn de regels hieronder.
  *
  *   WI: Overleg met post of casemanagement. Die bepaalt met wie. Dat hangt af
- *   van waar de beller is en staat in data/aanspreekpunt.js. De regels
- *   hieronder noemen dus geen namen, maar een soort:
- *       metWieSoort: 'aanspreekpunt'  het eerste aanspreekpunt zelf
+ *   van waar de beller is en staat in `aanspreekpunten`. De regels hieronder
+ *   noemen dus geen namen, maar een soort:
+ *       metWieSoort: 'aanspreekpunt'  het aanspreekpunt zelf
  *       metWieSoort: 'dda'            de DDA daarvan
  *       metWieSoort: 'auto'           binnen kantoortijd het aanspreekpunt,
  *                                     daarbuiten de DDA
@@ -35,16 +35,9 @@
  * Staat er een lijst van zulke objecten, dan hoeft er maar één te kloppen:
  *     [ { melder: ['autoriteiten'] }, { begraven: ['nee', 'ja'] } ]
  *
- * Naast de antwoorden kun je drie afgeleide feiten gebruiken, die de tool zelf
- * uitrekent uit de klok, de postenlijst en de plek van de beller:
- *     aanspreekpunt — 'casemanagement' | 'post' | 'waarnemend' | 'regio' |
- *                     'geen-bijstand' | 'onbekend'
- *     kantoortijd   — 'ja' | 'nee' | 'onbekend' | 'nvt'   (van het aanspreekpunt)
- *     caribisch     — 'ja' | 'nee'  (beller of overlijden in de Caribische
- *                                    delen van het Koninkrijk)
- *
- * LET OP: de openingstijden in data/posten.js zijn nog voorbeelden. Daarmee is
- * "binnen of buiten kantoortijd" nu een aanname.
+ * Naast de antwoorden is er één afgeleid feit, dat de tool zelf uitrekent:
+ *     caribisch — 'ja' | 'nee'  (de beller of het overlijden is in de
+ *                                Caribische delen van het Koninkrijk)
  */
 window.FILTERLOGICA = (function () {
   'use strict';
@@ -58,7 +51,8 @@ window.FILTERLOGICA = (function () {
     nietBereikbaar: WI + 'collega-niet-bereikbaar-voor-een-consulair-geval'
   };
 
-  /* De twee zijpaden die de instructie onder stap 4 noemt. */
+  /* De twee zijpaden die de instructie onder stap 4 noemt. Ze staan hier als
+   * verantwoording bij de regel; het scherm toont ze niet. */
   var TWIJFEL = {
     vraag: 'Ik twijfel om de DDA te bellen',
     antwoord: 'Overleg eerst met de vraagbaak. Is er geen vraagbaak? Overleg dan met je directe collega’s en besluit samen.'
@@ -73,62 +67,58 @@ window.FILTERLOGICA = (function () {
   var NOTEER = 'Noteer in de Communication-tab van Hermes hoe je het gesprek hebt afgerond (stap 5).';
   var WACHT = 'Vraag of je de beller in de wacht mag zetten en zeg dat je gaat overleggen met een collega.';
 
+  /* Waar iemand is, in vier smaken. Meer onderscheid heeft de filter niet
+   * nodig: het bepaalt alleen met wie je overlegt. */
+  var PLEKKEN = [
+    { waarde: 'nederland', label: 'In Nederland' },
+    { waarde: 'buitenland', label: 'In het buitenland' },
+    { waarde: 'caribisch', label: 'In het Caribisch deel van het Koninkrijk' },
+    { waarde: 'onbekend', label: 'Weet ik niet' }
+  ];
+
   var stappen = [
     {
       id: 'melder',
-      type: 'keuze',
       vraag: 'Van wie komt de melding?',
-      hint: 'Een melding van de lokale autoriteiten volgt een eigen route.',
       opties: [
-        { waarde: 'anders', label: 'Van een nabestaande of andere melder', toelichting: 'Familie, reisgenoot, werkgever of reisorganisatie.' },
-        { waarde: 'autoriteiten', label: 'Van de lokale autoriteiten', toelichting: 'De melding komt uit het land zelf.' }
+        { waarde: 'anders', label: 'Van een nabestaande of andere melder' },
+        { waarde: 'autoriteiten', label: 'Van de lokale autoriteiten' }
       ]
     },
     {
       id: 'begraven',
-      type: 'keuze',
       als: { melder: ['anders'] },
       vraag: 'Is de persoon al begraven of gecremeerd?',
-      hint: 'Checkvraag uit stap 1. Hier splitst de instructie de route.',
       opties: [
-        { waarde: 'nee', label: 'Nee, nog niet', toelichting: 'Recent overleden.' },
+        { waarde: 'nee', label: 'Nee, nog niet' },
         { waarde: 'ja', label: 'Ja, al begraven of gecremeerd' },
         { waarde: 'onbekend', label: 'Weet ik niet' }
       ]
     },
     {
       id: 'bellerLand',
-      type: 'post',
-      als: [{ melder: ['autoriteiten'] }, { begraven: ['nee', 'ja'] }],
-      vraag: 'Waar is de beller?',
-      hint: 'Hier hangt aan vast met wie je overlegt, en welke klok telt.',
-      snelkeuzes: [
-        { waarde: 'nederland', label: 'In Nederland', toelichting: 'Dan is casemanagement het aanspreekpunt.' }
-      ],
-      extraRijen: [
-        { waarde: 'waarnemend', label: 'Een ander land, staat niet in de lijst', toelichting: 'De tool wijst je naar de landenpagina’s.' },
-        { waarde: 'onbekend', label: 'Weet ik niet', toelichting: 'Zonder dit kan de tool geen aanspreekpunt bepalen.' }
-      ]
+      vraag: 'Waar is de beller op dit moment?',
+      opties: PLEKKEN
     },
     {
       id: 'overlijdenLand',
-      type: 'post',
-      als: [{ melder: ['autoriteiten'] }, { begraven: ['nee', 'ja'] }],
-      vraag: 'In welk land is de persoon overleden?',
-      hint: 'Checkvraag uit stap 1. Bepaalt niet met wie je overlegt, wel welke post de zaak heeft.',
-      snelkeuzes: [
-        { waarde: 'zelfde', label: 'In hetzelfde land als de beller', alsNiet: { bellerLand: ['onbekend', 'waarnemend'] } }
-      ],
-      extraRijen: [
-        { waarde: 'onbekend', label: 'Weet ik niet of het land staat er niet bij' }
+      vraag: 'Waar is de persoon overleden?',
+      opties: PLEKKEN
+    },
+    {
+      id: 'kantoortijd',
+      als: { caribisch: ['nee'], bellerLand: ['nederland', 'buitenland'] },
+      vraag: 'Is het nu kantoortijd bij het aanspreekpunt?',
+      opties: [
+        { waarde: 'ja', label: 'Ja, het aanspreekpunt is nu open' },
+        { waarde: 'nee', label: 'Nee, het is daar buiten kantoortijd' },
+        { waarde: 'onbekend', label: 'Weet ik niet' }
       ]
     },
     {
       id: 'familie',
-      type: 'keuze',
       als: { melder: ['anders'], begraven: ['ja'], kantoortijd: ['nee'] },
       vraag: 'Zijn de directe nabestaanden al op de hoogte?',
-      hint: 'Partner, kinderen of andere directe familie.',
       opties: [
         { waarde: 'ja', label: 'Ja, de familie weet het' },
         { waarde: 'nee', label: 'Nee, nog niet' },
@@ -137,53 +127,24 @@ window.FILTERLOGICA = (function () {
     }
   ];
 
-  /* Wat er op het startscherm staat, uit de kop en stap 1 van de instructie. */
-  var start = {
-    waarschuwing: 'Voorlichters van SOS mogen geen vragen over dit onderwerp beantwoorden.',
-    positie: 'Deze filter is stap 4 van de werkinstructie. Stap 1 t/m 3 — checkvragen, zoeken in Hermes, case aanmaken of aanvullen — doe je hiervoor.',
-    kanalen: [
-      { tekst: 'Komt het verzoek via WhatsApp?', link: { tekst: 'WhatsApp-instructie', url: LINK.whatsapp } },
-      { tekst: 'Komt het verzoek via e-mail?', link: { tekst: 'E-mailinstructie', url: LINK.email } }
-    ],
-    checkvragenKop: 'Checkvragen bij de hand (stap 1)',
-    checkvragenUitleg: 'Hulpmiddel — je hoeft ze niet allemaal te stellen.',
-    checkvragen: [
-      'Wat is uw relatie tot de overledene?',
-      'Wat is de naam van de overleden persoon? Spel met het telefoonalfabet en controleer het voorvoegsel (Da Costa of Dacosta?).',
-      'Wat is uw naam, telefoonnummer en e-mailadres?',
-      'Zijn er andere directe nabestaanden (partner, kinderen) op de hoogte? Zijn zij ter plaatse?',
-      'Wat is de geboortedatum van de overleden persoon?',
-      'In welk land en welke plaats is de persoon overleden?',
-      'Wanneer is de persoon overleden?',
-      'Weet u waar het lichaam nu is (ziekenhuis, mortuarium)?',
-      'Is de persoon al begraven of gecremeerd?'
-    ],
-    checkvragenLink: { tekst: 'Check of de AP in aanmerking komt voor consulair maatschappelijke bijstand', url: LINK.bijstand }
-  };
-
-  /* Welke afgeleide feiten onder "Waarom dit advies" komen te staan. */
-  var toonFeiten = ['kantoortijd'];
-
-  var feitLabels = {
-    kantoortijd: {
-      label: 'Kantoortijd bij het aanspreekpunt',
-      waardes: {
-        ja: 'binnen kantoortijden',
-        nee: 'buiten kantoortijden',
-        onbekend: 'onbekend',
-        nvt: 'niet van toepassing'
-      }
+  /* Met wie je overlegt, afgeleid van waar de beller is.
+   * Uit WI: Overleg met post of casemanagement. */
+  var aanspreekpunten = {
+    nederland: {
+      naam: 'casemanagement',
+      dda: 'de DDA van casemanagement'
     },
-    aanspreekpunt: {
-      label: 'Aanspreekpunt',
-      waardes: {
-        casemanagement: 'casemanagement',
-        post: 'de post ter plaatse',
-        waarnemend: 'de waarnemende post',
-        regio: 'de regio-casemanager',
-        'geen-bijstand': 'geen consulaire bijstand',
-        onbekend: 'nog niet te bepalen'
-      }
+    buitenland: {
+      naam: 'de Nederlandse post ter plaatse',
+      dda: 'de post-DDA, via de BOA'
+    },
+    caribisch: {
+      naam: 'niemand — hier is geen consulaire bijstand',
+      dda: 'niemand — hier is geen consulaire bijstand'
+    },
+    onbekend: {
+      naam: 'nog niet te bepalen',
+      dda: 'nog niet te bepalen'
     }
   };
 
@@ -196,13 +157,31 @@ window.FILTERLOGICA = (function () {
       advies: {
         niveau: 'geen',
         kop: 'Geen consulaire bijstand — verwijs door',
-        metWieSoort: 'aanspreekpunt',
+        metWie: 'Niemand — verwijs door naar de lokale hulpdiensten',
         stappen: [
           'Leg uit dat het ministerie van Buitenlandse Zaken hier geen consulaire bijstand verleent.',
           'Verwijs door. Geef in een noodgeval het nummer van de lokale hulpdiensten uit het reisadvies.',
           NOTEER
         ],
         toelichting: 'Dit geldt voor de Caribische landen (Aruba, Curaçao, Sint Maarten) en de bijzondere openbare lichamen (Bonaire, Sint Eustatius, Saba).'
+      }
+    },
+    {
+      id: 'beller-onbekend',
+      naam: 'Onbekend waar de beller is',
+      grondslag: 'WI: Overleg met post of casemanagement',
+      wanneer: { bellerLand: ['onbekend'] },
+      advies: {
+        niveau: 'overleg',
+        kop: 'Vraag eerst waar de beller is',
+        metWie: 'Nog niet te bepalen',
+        stappen: [
+          'Vraag in welk land de beller op dit moment is.',
+          'Daarna zegt de tool met wie je overlegt en of dat nu moet.',
+          NOTEER
+        ],
+        toelichting: 'Met wie je overlegt hangt af van waar de beller is: in Nederland casemanagement, in het buitenland de post daar.',
+        anders: [NIEMAND]
       }
     },
     {
@@ -308,24 +287,6 @@ window.FILTERLOGICA = (function () {
       }
     },
     {
-      id: 'beller-onbekend',
-      naam: 'Onbekend waar de beller is',
-      grondslag: 'WI: Overleg met post of casemanagement',
-      wanneer: { aanspreekpunt: ['onbekend'] },
-      advies: {
-        niveau: 'overleg',
-        kop: 'Vraag eerst waar de beller is',
-        metWie: 'Nog niet te bepalen',
-        stappen: [
-          'Vraag in welk land de beller op dit moment is.',
-          'Daarna zegt de tool met wie je overlegt en of dat nu moet.',
-          NOTEER
-        ],
-        toelichting: 'Met wie je overlegt hangt af van waar de beller is: in Nederland casemanagement, in het buitenland de post daar.',
-        anders: [NIEMAND]
-      }
-    },
-    {
       id: 'kantoortijd-onbekend',
       naam: 'Kantoortijden van het aanspreekpunt niet vast te stellen',
       grondslag: 'WI: Overleg met post of casemanagement — land zonder Nederlandse post',
@@ -364,14 +325,12 @@ window.FILTERLOGICA = (function () {
   ];
 
   return {
-    versie: '2.0',
-    bijgewerkt: '2026-09-14',
+    versie: '3.0',
+    bijgewerkt: '2026-09-15',
     bron: 'WI: Overlijden (stap 4) en WI: Overleg met post of casemanagement',
     links: LINK,
-    start: start,
     stappen: stappen,
-    toonFeiten: toonFeiten,
-    feitLabels: feitLabels,
+    aanspreekpunten: aanspreekpunten,
     regels: regels
   };
 })();
