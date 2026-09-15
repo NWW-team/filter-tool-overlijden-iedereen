@@ -76,8 +76,9 @@
     var f = {};
     for (var k in state.antwoorden) f[k] = state.antwoorden[k];
 
-    /* Aruba en Curaçao staan ook gewoon in de landenselector. Zonder deze
-     * check zou je de Caribische regel eromheen kunnen klikken. */
+    /* De Caribische delen van het Koninkrijk staan niet in de landenselector —
+     * ze zijn een eigen antwoord. Deze check is het slot op de deur voor het
+     * geval ze ooit toch in de lijst belanden. */
     var caribischLand = f.bellerLandCode && LAND.caribischNL.indexOf(f.bellerLandCode) !== -1;
     f.caribisch = (f.bellerLand === 'caribisch' || f.overlijdenLand === 'caribisch' || caribischLand)
       ? 'ja' : 'nee';

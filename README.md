@@ -34,8 +34,9 @@ te publiceren. Alleen de omslag verschilt; de tool zelf staat in `assets/` en
   overlegt: casemanagement of de post ter plaatse, en buiten kantoortijd de DDA
   daarvan. Bij een melding van de lokale autoriteiten is het altijd de post, ook
   als die dicht is — dan de post-DDA.
-* **Caribische delen van het Koninkrijk** komen er als eigen uitkomst uit: geen
-  consulaire bijstand, verwijs door. Ook als je dat land via de selector kiest.
+* **Caribische delen van het Koninkrijk** zijn een eigen antwoord op de vraag
+  waar de beller is, en staan dus niet in de landenselector. Ze leiden tot een
+  eigen uitkomst: geen consulaire bijstand, verwijs door.
 * **Een expliciet advies.** Wel of niet overleggen, met wie, en wat je in dit
   gesprek doet — geen instructie die nog geïnterpreteerd moet worden.
 
@@ -75,7 +76,7 @@ In een voorwaarde gebruik je de `id` van een stap met een van de `waarde`s die
 daarbij horen. Daarnaast zijn er twee feiten die de tool zelf afleidt:
 
 * `caribisch` (`ja` / `nee`) — waar als de beller óf het overlijden in het
-  Caribisch deel van het Koninkrijk is, inclusief die landen uit de selector.
+  Caribisch deel van het Koninkrijk is.
 * `kantoortijd` (`ja` / `nee` / `nvt`) — of het nu tussen 9 en 17 uur is bij het
   aanspreekpunt: in het gekozen land, of in Nederland bij casemanagement.
 

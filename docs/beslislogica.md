@@ -23,7 +23,7 @@ Eén vraag per scherm, "Volgende" eronder. Drie tot zes vragen.
 | Van wie komt de melding? | altijd | van een nabestaande of andere melder · van de lokale autoriteiten |
 | Is de persoon al begraven of gecremeerd? | niet bij een melding van de lokale autoriteiten | nee · ja |
 | Waar is de beller op dit moment? | altijd | in Nederland · in het buitenland · in het Caribisch deel van het Koninkrijk |
-| In welk land is de beller? | alleen bij "in het buitenland" | een keuzelijst met alle landen |
+| In welk land is de beller? | alleen bij "in het buitenland" | een keuzelijst met alle landen, zonder Nederland en zonder de Caribische delen van het Koninkrijk |
 | Waar is de persoon overleden? | altijd | in het buitenland · in het Caribisch deel van het Koninkrijk |
 | Zijn de directe nabestaanden al op de hoogte? | alleen bij: al begraven/gecremeerd én buiten kantoortijden | ja · nee |
 
@@ -121,8 +121,8 @@ hierover, dan verandert er één regel in `data/beslislogica.js`.
    óf het overlijden* daar is, omdat het ministerie daar hoe dan ook geen
    consulaire bijstand verleent. Daarom bestaat de overlijdensvraag nog: die
    dient alleen deze regel. Aruba, Curaçao, Sint Maarten en Caribisch Nederland
-   staan ook gewoon in de landenselector; kiest de voorlichter ze daar, dan gaat
-   dezelfde regel af.
+   staan niet in de landenselector — het Caribisch deel is een eigen antwoord,
+   zodat er maar één manier is om er te komen.
 4. **De hoofdstad bij meerdere tijdzones.** Heeft een land meerdere tijdzones,
    dan rekent de tool met die van de hoofdstad, want daar zit de post. Voor de
    Verenigde Staten is dat de oostkust, voor Brazilië Brasília.

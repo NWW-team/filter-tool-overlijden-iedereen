@@ -46,8 +46,10 @@ var HOOFDSTAD = {
 var GEEN_LAND = ['AQ', 'UM', 'TF'];
 
 /* Aruba, Curaçao, Sint Maarten en Caribisch Nederland (Bonaire, Sint
- * Eustatius, Saba). Hier verleent Buitenlandse Zaken geen consulaire bijstand;
- * de tool moet dat herkennen, ook als iemand het land uit deze lijst kiest. */
+ * Eustatius, Saba). Deze staan NIET in de selector: het Caribisch deel van het
+ * Koninkrijk is een eigen antwoord op de vraag waar de beller is, en daar
+ * verleent Buitenlandse Zaken geen consulaire bijstand. Ze staan hier zodat de
+ * tool ze blijft herkennen als ze ooit toch in de lijst belanden. */
 var CARIBISCH_NL = ['AW', 'CW', 'SX', 'BQ'];
 
 function lees() {
@@ -63,6 +65,7 @@ function lees() {
   });
   Object.keys(HOOFDSTAD).forEach(function (code) { zones[code] = HOOFDSTAD[code]; });
   GEEN_LAND.forEach(function (code) { delete zones[code]; });
+  CARIBISCH_NL.forEach(function (code) { delete zones[code]; });
   delete zones.NL;
   return zones;
 }
@@ -89,6 +92,8 @@ function schrijf(zones) {
     ' * Intl.DisplayNames, zodat ze niet met de hand vertaald hoeven te worden.',
     ' *',
     ' * Nederland ontbreekt met opzet — de landenselector is voor het buitenland.',
+    ' * De Caribische delen van het Koninkrijk ontbreken ook: die zijn een eigen',
+    ' * antwoord op de vraag waar de beller is.',
     ' *',
     ' * Gegenereerd uit tzdata op ' + new Date().toISOString().slice(0, 10) + '.',
     ' */',

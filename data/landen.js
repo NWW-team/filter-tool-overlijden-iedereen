@@ -13,6 +13,8 @@
  * Intl.DisplayNames, zodat ze niet met de hand vertaald hoeven te worden.
  *
  * Nederland ontbreekt met opzet — de landenselector is voor het buitenland.
+ * De Caribische delen van het Koninkrijk ontbreken ook: die zijn een eigen
+ * antwoord op de vraag waar de beller is.
  *
  * Gegenereerd uit tzdata op 2026-09-15.
  */
@@ -32,7 +34,6 @@ window.FILTERLANDEN = (function () {
     AS: 'Pacific/Pago_Pago',
     AT: 'Europe/Vienna',
     AU: 'Australia/Sydney',
-    AW: 'America/Puerto_Rico',
     AX: 'Europe/Helsinki',
     AZ: 'Asia/Baku',
     BA: 'Europe/Belgrade',
@@ -48,7 +49,6 @@ window.FILTERLANDEN = (function () {
     BM: 'Atlantic/Bermuda',
     BN: 'Asia/Kuching',
     BO: 'America/La_Paz',
-    BQ: 'America/Puerto_Rico',
     BR: 'America/Sao_Paulo',
     BS: 'America/Toronto',
     BT: 'Asia/Thimphu',
@@ -70,7 +70,6 @@ window.FILTERLANDEN = (function () {
     CR: 'America/Costa_Rica',
     CU: 'America/Havana',
     CV: 'Atlantic/Cape_Verde',
-    CW: 'America/Puerto_Rico',
     CX: 'Asia/Bangkok',
     CY: 'Asia/Nicosia',
     CZ: 'Europe/Prague',
@@ -226,7 +225,6 @@ window.FILTERLANDEN = (function () {
     SS: 'Africa/Juba',
     ST: 'Africa/Sao_Tome',
     SV: 'America/El_Salvador',
-    SX: 'America/Puerto_Rico',
     SY: 'Asia/Damascus',
     SZ: 'Africa/Johannesburg',
     TC: 'America/Grand_Turk',
