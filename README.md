@@ -24,16 +24,20 @@ te publiceren. Alleen de omslag verschilt; de tool zelf staat in `assets/` en
 * **Eén vraag per scherm.** Drie tot zes vragen met keuzerondjes, en daaronder
   "Volgende". Een vraag wordt overgeslagen zodra het antwoord de uitkomst niet
   meer kan veranderen; de balk bovenaan laat zien hoe ver je bent.
+* **Geen "weet ik niet".** Elke vraag dwingt een keuze af. Weet de voorlichter
+  het antwoord niet, dan is dat iets om aan de beller te vragen — niet iets om
+  de filter mee door te komen.
+* **De klok doet het rekenwerk.** Kiest de voorlichter "in het buitenland", dan
+  volgt een landenselector met alle landen. De tool toont de lokale tijd daar en
+  bepaalt zelf of de post open is. De voorlichter hoeft geen tijdzones te kennen.
 * **Met wie, niet alleen of.** Uit "waar is de beller?" volgt met wie je
   overlegt: casemanagement of de post ter plaatse, en buiten kantoortijd de DDA
-  daarvan.
+  daarvan. Bij een melding van de lokale autoriteiten is het altijd de post, ook
+  als die dicht is — dan de post-DDA.
 * **Caribische delen van het Koninkrijk** komen er als eigen uitkomst uit: geen
-  consulaire bijstand, verwijs door.
+  consulaire bijstand, verwijs door. Ook als je dat land via de selector kiest.
 * **Een expliciet advies.** Wel of niet overleggen, met wie, en wat je in dit
   gesprek doet — geen instructie die nog geïnterpreteerd moet worden.
-* **Eerlijk over gaten.** Past geen enkele regel, of weet de voorlichter iets
-  niet dat de instructie wél nodig heeft, dan zegt de tool dat en wijst ze naar
-  de twijfelroute — in plaats van een advies te verzinnen.
 
 ## Hoe het in elkaar zit
 
@@ -43,6 +47,8 @@ demo-artifact.html      dezelfde tool, als deelbare demopagina
 assets/app.js           de motor: vragen stellen, regels toepassen, tekenen
 assets/styles.css       vormgeving
 data/beslislogica.js    de vragen, de aanspreekpunten en de regels
+data/landen.js          landcode → tijdzone (gegenereerd, niet met de hand aanpassen)
+tools/landen-genereren.js  maakt data/landen.js uit de IANA-tijdzonedatabase
 docs/beslislogica.md    alles in woorden, om naast de instructies te leggen
 datastromen.html        achtergrondpagina over een eerdere, uitgebreidere versie
 ```
@@ -66,15 +72,28 @@ wanneer: { begraven: ['ja'], kantoortijd: ['nee'], familie: ['ja'] }
 ```
 
 In een voorwaarde gebruik je de `id` van een stap met een van de `waarde`s die
-daarbij horen. Daarnaast is er één feit dat de tool zelf afleidt: `caribisch`
-(`ja` / `nee`), waar als de beller óf het overlijden in het Caribisch deel van
-het Koninkrijk is. De laatste regel in de lijst heeft geen voorwaarde en vangt
-alles op wat de instructies niet dekken — laat die staan.
+daarbij horen. Daarnaast zijn er twee feiten die de tool zelf afleidt:
+
+* `caribisch` (`ja` / `nee`) — waar als de beller óf het overlijden in het
+  Caribisch deel van het Koninkrijk is, inclusief die landen uit de selector.
+* `kantoortijd` (`ja` / `nee` / `nvt`) — of het nu tussen 9 en 17 uur is bij het
+  aanspreekpunt: in het gekozen land, of in Nederland bij casemanagement.
+
+De laatste regel in de lijst heeft geen voorwaarde en vangt alles op wat de
+instructies niet dekken — laat die staan, ook al is hij met de huidige vragen
+niet te bereiken.
 
 Een regel noemt geen namen maar een soort: `metWieSoort: 'aanspreekpunt'`,
 `'dda'` of `'auto'` (binnen kantoortijd het aanspreekpunt, daarbuiten de DDA).
 Wie dat dan is, staat in `aanspreekpunten`, per antwoord op "waar is de beller?".
-Staat er een vaste `metWie` in een advies, dan wint die.
+Een regel kan dat overrulen met `metWiePlek` — dat doet de regel voor de lokale
+autoriteiten, waar het altijd de post is. Staat er een vaste `metWie` in een
+advies, dan wint die.
+
+**Een land toevoegen of bijwerken** doe je niet met de hand: draai
+`node tools/landen-genereren.js` opnieuw. Dat leest de tijdzonedatabase van het
+systeem. Klopt de tijdzone van een land niet, dan hoort de correctie in de
+`HOOFDSTAD`-tabel bovenin dat script.
 
 Verhoog na een wijziging `versie` en `bijgewerkt` onderin
 `data/beslislogica.js`, zodat je later kunt zien op welke versie een advies
@@ -82,10 +101,15 @@ gebaseerd was.
 
 ## Wat er nog niet in zit
 
-* **De tool kijkt niet meer zelf op de klok.** Of het bij het aanspreekpunt
-  kantoortijd is, vraagt de tool gewoon aan de voorlichter. Een eerdere versie
-  rekende dat uit met een postenlijst vol tijdzones en openingstijden; die data
-  waren verzonnen voorbeelden, en het scherm werd er vol van.
+* **De echte openingstijden.** De tool rekent met de aanname dat élke post elke
+  dag van 9 tot 17 uur lokale tijd open is, ook in het weekend en op
+  feestdagen. Tijdzones kloppen wél — die komen uit de IANA-database. "Binnen of
+  buiten kantoortijd" is dus zolang een benadering.
+* **Welke post verantwoordelijk is.** Heeft een land geen Nederlandse post, dan
+  weet de tool niet welke post waarneemt; ze zegt alleen "de Nederlandse post
+  ter plaatse". Dat zoekt de voorlichter op de landenpagina's op.
+* **Bij een land met meerdere tijdzones** rekent de tool met de tijd in de
+  hoofdstad, want daar zit de post.
 * Stap 2 en 3 van de instructie (Hermes) — de tool filtert alleen op de
   situatie.
 * Telefoonnummers: de tool houdt geen nummers bij.

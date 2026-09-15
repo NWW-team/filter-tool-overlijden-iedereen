@@ -16,19 +16,41 @@ ervoor; stap 5 (de afronding noteren) staat als laatste actie in elk advies.
 
 ## Wat de tool vraagt
 
-Eén vraag per scherm, keuzerondjes, "Volgende". Drie tot zes vragen.
+Eén vraag per scherm, "Volgende" eronder. Drie tot zes vragen.
 
 | Vraag | Wanneer | Antwoorden |
 | --- | --- | --- |
 | Van wie komt de melding? | altijd | van een nabestaande of andere melder · van de lokale autoriteiten |
-| Is de persoon al begraven of gecremeerd? | niet bij een melding van de lokale autoriteiten | nee · ja · weet ik niet |
-| Waar is de beller op dit moment? | altijd | in Nederland · in het buitenland · in het Caribisch deel van het Koninkrijk · weet ik niet |
-| Waar is de persoon overleden? | altijd | dezelfde vier antwoorden |
-| Is het nu kantoortijd bij het aanspreekpunt? | tenzij het Caribisch deel van het Koninkrijk in beeld is, of onbekend is waar de beller is | ja · nee · weet ik niet |
-| Zijn de directe nabestaanden al op de hoogte? | alleen bij: al begraven/gecremeerd én buiten kantoortijden | ja · nee · weet ik niet |
+| Is de persoon al begraven of gecremeerd? | niet bij een melding van de lokale autoriteiten | nee · ja |
+| Waar is de beller op dit moment? | altijd | in Nederland · in het buitenland · in het Caribisch deel van het Koninkrijk |
+| In welk land is de beller? | alleen bij "in het buitenland" | een keuzelijst met alle landen |
+| Waar is de persoon overleden? | altijd | in het buitenland · in het Caribisch deel van het Koninkrijk |
+| Zijn de directe nabestaanden al op de hoogte? | alleen bij: al begraven/gecremeerd én buiten kantoortijden | ja · nee |
+
+**Geen enkele vraag heeft een "weet ik niet".** Dat is een bewuste keuze: het is
+steeds iets dat de voorlichter aan de beller kan vragen. De tool dwingt dus een
+antwoord af, ook als dat betekent dat er eerst doorgevraagd moet worden.
+
+**"In Nederland" ontbreekt bij de overlijdensvraag.** Alleen een overlijden
+buiten Nederland is voor Buitenlandse Zaken relevant. Bij de bellervraag staat
+die keuze er wél: de beller kan hier gewoon zijn.
 
 Een vraag wordt overgeslagen zodra het antwoord de uitkomst niet meer kan
 veranderen.
+
+## Wat de tool zelf uitrekent
+
+De tool vraagt niet of het kantoortijd is; ze leidt dat af uit de klok:
+
+| Waar de beller is | Welke klok telt |
+| --- | --- |
+| Nederland | Europe/Amsterdam (casemanagement) |
+| Het gekozen land | de tijdzone van dat land, uit de IANA-database |
+| Caribisch deel van het Koninkrijk | geen — hier geldt "niet van toepassing" |
+
+De aanname: **elke post is elke dag van 9 tot 17 uur lokale tijd open**, ook in
+het weekend. Op het landenscherm ziet de voorlichter meteen hoe laat het daar is
+en of de post open is.
 
 ## Met wie je overlegt
 
@@ -39,35 +61,33 @@ Uit WI: Overleg met post of casemanagement. Het hangt af van waar de beller is.
 | Nederland | Casemanagement (CM) | De DDA van casemanagement |
 | Buitenland | De Nederlandse post ter plaatse | De post-DDA, via de BOA |
 | Caribische delen van het Koninkrijk | Geen consulaire bijstand — verwijs door | — |
-| Weet ik niet | Nog niet te bepalen | — |
 
-De tool maakt geen onderscheid meer tussen een land mét en een land zónder
-Nederlandse post, en kent de casemanager voor Oekraïne niet apart. Wie in het
-buitenland belt, krijgt "de Nederlandse post ter plaatse"; welke post dat is en
-of die waarneemt, zoekt de voorlichter op de landenpagina's.
+Eén regel wijkt hiervan af: bij een melding van de **lokale autoriteiten** is het
+altijd de post, waar de beller ook is. Dat staat in de regel zelf als
+`metWiePlek`.
+
+De tool maakt geen onderscheid tussen een land mét en een land zónder
+Nederlandse post, en kent geen regio-casemanagers. Welke post waarneemt, zoekt
+de voorlichter op de landenpagina's op.
 
 ## Wat de tool adviseert
 
 De regels worden van boven naar beneden doorlopen. De eerste die past, wint.
-"Kantoortijd" is steeds die van het aanspreekpunt hierboven.
 
 | # | Situatie | Advies | Uit de instructie |
 | --- | --- | --- | --- |
 | 1 | Beller of overlijden in de Caribische delen van het Koninkrijk | Geen consulaire bijstand, verwijs door | WI: Overleg — Caribische Koninkrijksdelen |
-| 2 | Onbekend waar de beller is | Vraag dat eerst; zonder dat is er geen aanspreekpunt | WI: Overleg met post of casemanagement |
-| 3 | Melding van de lokale autoriteiten | Altijd overleggen, ook buiten kantoortijden | Stap 4 — Melding van lokale autoriteiten |
-| 4 | Nog niet begraven/gecremeerd, binnen kantoortijden | Overleg met het aanspreekpunt | Stap 4 — Recent overleden |
-| 5 | Nog niet begraven/gecremeerd, buiten kantoortijden | Overleg met de DDA | Stap 4 — Recent overleden |
-| 6 | Al begraven/gecremeerd, binnen kantoortijden | Overleg met het aanspreekpunt | Stap 4 — Al begraven/gecremeerd |
-| 7 | Al begraven/gecremeerd, buiten kantoortijden, familie nog niet op de hoogte | Overleg met de DDA | Stap 4 — Al begraven/gecremeerd |
-| 8 | Al begraven/gecremeerd, buiten kantoortijden, familie al op de hoogte | Geen overleg: laat de volgende werkdag terugbellen of mailen | Stap 4 — Al begraven/gecremeerd |
-| 9 | Onbekend of de persoon al begraven/gecremeerd is | Zoek dit uit; lukt dat niet, de twijfelroute | Stap 4 — "Ik twijfel om de DDA te bellen" |
-| 10 | Kantoortijden van het aanspreekpunt onbekend | Zoek op de landenpagina's welke post waarneemt | WI: Overleg — land zonder Nederlandse post |
-| 11 | *alles wat hierboven niet past* | Overleggen, met de mededeling dat de tool dit niet dekt | Vangnet, niet uit de instructie |
+| 2 | Melding van de lokale autoriteiten | Altijd overleggen met de post; is die dicht, dan met de post-DDA | Stap 4 — Melding van lokale autoriteiten |
+| 3 | Nog niet begraven/gecremeerd, post open | Overleg met het aanspreekpunt | Stap 4 — Recent overleden |
+| 4 | Nog niet begraven/gecremeerd, post dicht | Overleg met de DDA | Stap 4 — Recent overleden |
+| 5 | Al begraven/gecremeerd, post open | Overleg met het aanspreekpunt | Stap 4 — Al begraven/gecremeerd |
+| 6 | Al begraven/gecremeerd, post dicht, familie nog niet op de hoogte | Overleg met de DDA | Stap 4 — Al begraven/gecremeerd |
+| 7 | Al begraven/gecremeerd, post dicht, familie al op de hoogte | Geen overleg: laat de volgende werkdag terugbellen of mailen | Stap 4 — Al begraven/gecremeerd |
+| 8 | *alles wat hierboven niet past* | Overleggen, met de mededeling dat de tool dit niet dekt | Vangnet, niet uit de instructie |
 
-Regel 2 staat bewust hoog: als onbekend is waar de beller is, slaat de tool de
-vraag over de kantoortijd over, en dan kan geen enkele regel eronder nog een
-zinnig aanspreekpunt noemen.
+Regel 8 is met de huidige vragen niet te bereiken: elke combinatie van
+antwoorden valt onder een van de regels erboven. Hij blijft staan als vangnet
+voor het moment dat er een vraag of antwoord bij komt.
 
 De zijpaden uit de instructie — "Ik twijfel om de DDA te bellen" (eerst de
 vraagbaak, anders directe collega's) en "Ik krijg niemand aan de telefoon" (met
@@ -77,11 +97,10 @@ staat alleen het advies.
 
 ## Wat de tool níét beslist
 
-**De kantoortijden zelf.** De tool vraagt of het kantoortijd is bij het
-aanspreekpunt; ze rekent dat niet meer uit. Een eerdere versie deed dat wel, met
-een lijst posten, tijdzones, werkweken en feestdagen — maar die openingstijden
-waren verzonnen voorbeelden, en de lijst maakte het scherm zwaar. De voorlichter
-weet dit of zoekt het op.
+**De echte openingstijden.** 9 tot 17 uur, elke dag, voor elke post. Geen
+weekenden, geen feestdagen, geen afwijkende werkweken. De tijdzones kloppen wel.
+
+**Welke post verantwoordelijk is** in een land zonder Nederlandse post.
 
 **Telefoonnummers.** De tool houdt zelf geen nummers bij.
 
@@ -90,25 +109,28 @@ weet dit of zoekt het op.
 Plekken waar de instructies geen uitsluitsel geven. Verandert het oordeel
 hierover, dan verandert er één regel in `data/beslislogica.js`.
 
-1. **"Weet ik niet" over de nabestaanden** telt als *nog niet op de hoogte*,
-   dus als de DDA-tak. Uitstel tot de volgende werkdag mag alleen als je wéét
-   dat de familie het weet.
-2. **"Weet ik niet" over begraven of gecremeerd** leidt niet naar een van beide
-   takken, maar naar de twijfelroute uit de instructie. De tool kiest hier niet
-   voor de voorlichter.
-3. **Welke klok telt.** WI: Overlijden zegt "lokale kantoortijden" zonder erbij
+1. **Welke klok telt.** WI: Overlijden zegt "lokale kantoortijden" zonder erbij
    te zeggen van welk land. De tool leest dat als: de kantoortijden van het
-   aanspreekpunt, en zet dat ook zo in de vraag. Het land waar de persoon
-   overleed doet daar niet aan mee — dat bepaalt welke post de zaak heeft, niet
-   wie je nu belt.
-4. **De beller, niet de overledene.** WI: Overleg spreekt over "waar de
+   aanspreekpunt, dus van het land waar de beller is. Het land waar de persoon
+   overleed doet daar niet aan mee.
+2. **De beller, niet de overledene.** WI: Overleg spreekt over "waar de
    Caller/AP is". Bij een overlijden is de AP de overledene, dus leest de tool
    dit als: waar de persoon is die je aan de lijn hebt.
-5. **Caribische delen van het Koninkrijk.** De instructie vraagt "Is de AP in
-   de Caribische Koninkrijksdelen?". De tool laat deze regel afgaan als
-   *de beller óf het overlijden* daar is, omdat het ministerie daar hoe dan ook
-   geen consulaire bijstand verleent. Daarom vraagt de tool ook waar de persoon
-   overleden is: die vraag dient alleen deze regel.
+3. **Caribische delen van het Koninkrijk.** De instructie vraagt "Is de AP in de
+   Caribische Koninkrijksdelen?". De tool laat deze regel afgaan als *de beller
+   óf het overlijden* daar is, omdat het ministerie daar hoe dan ook geen
+   consulaire bijstand verleent. Daarom bestaat de overlijdensvraag nog: die
+   dient alleen deze regel. Aruba, Curaçao, Sint Maarten en Caribisch Nederland
+   staan ook gewoon in de landenselector; kiest de voorlichter ze daar, dan gaat
+   dezelfde regel af.
+4. **De hoofdstad bij meerdere tijdzones.** Heeft een land meerdere tijdzones,
+   dan rekent de tool met die van de hoofdstad, want daar zit de post. Voor de
+   Verenigde Staten is dat de oostkust, voor Brazilië Brasília.
+5. **Geen derde antwoord.** Waar de tool eerder "weet ik niet" kende — bij
+   begraven of gecremeerd, en bij de nabestaanden — dwingt ze nu een keuze af.
+   Daarmee verviel de twijfelroute ("zoek dit eerst uit") als eigen uitkomst, en
+   ook de veiligheidsklep dat twijfel over de nabestaanden als *nog niet op de
+   hoogte* telde. Twijfelt de voorlichter, dan is doorvragen de bedoeling.
 
 ## Bewust buiten de filter
 
@@ -122,12 +144,12 @@ hierover, dan verandert er één regel in `data/beslislogica.js`.
   het geval.
 * **De checkvragen uit stap 1.** Die doet de voorlichter vóór deze filter.
 
-Deze drie stonden eerder op een startscherm vóór de eerste vraag. Dat scherm is
-weg: de tool begint nu meteen met de eerste vraag.
-
 ## Wat er verandert als de instructie verandert
 
-Alleen `data/beslislogica.js` hoeft mee te veranderen: de vragen (`stappen`),
-met wie je overlegt (`aanspreekpunten`) en de adviezen (`regels`). De rest van
-de tool weet niets van de inhoud. Verhoog bij een wijziging `versie` en
-`bijgewerkt` onderin dat bestand.
+`data/beslislogica.js` bevat de vragen (`stappen`), met wie je overlegt
+(`aanspreekpunten`) en de adviezen (`regels`). De rest van de tool weet niets
+van de inhoud. Verhoog bij een wijziging `versie` en `bijgewerkt` onderin dat
+bestand.
+
+`data/landen.js` is gegenereerd en wordt niet met de hand aangepast; draai
+`node tools/landen-genereren.js` opnieuw als de tijdzonegegevens veranderen.

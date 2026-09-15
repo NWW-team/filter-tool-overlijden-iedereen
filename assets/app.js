@@ -2,8 +2,8 @@
  * Filtertool melding van overlijden — motor en scherm.
  *
  * Dit bestand bevat geen beleid. Alle vragen en regels staan in
- * data/beslislogica.js. Wie de instructie beheert, hoeft dit bestand niet aan
- * te raken.
+ * data/beslislogica.js, de landen en hun tijdzones in data/landen.js. Wie de
+ * instructie beheert, hoeft dit bestand niet aan te raken.
  *
  * Eén vraag per scherm, keuzerondjes, Volgende. Aan het eind één advies.
  */
@@ -11,6 +11,44 @@
   'use strict';
 
   var L = window.FILTERLOGICA;
+  var LAND = window.FILTERLANDEN;
+
+  /* ------------------------------------------------------------------ tijd */
+
+  /* De aanname van deze tool: elke post is elke dag van 9 tot 17 uur lokale
+   * tijd open, ook in het weekend. Echte openingstijden zitten er niet in. */
+  function isOpen(tijdzone, moment) {
+    var uur = parseInt(new Intl.DateTimeFormat('en-US', {
+      timeZone: tijdzone, hourCycle: 'h23', hour: '2-digit'
+    }).format(moment), 10) % 24;
+    return uur >= 9 && uur < 17;
+  }
+
+  function tijdTekst(tijdzone, moment) {
+    return new Intl.DateTimeFormat('nl-NL', {
+      timeZone: tijdzone, weekday: 'long', hour: '2-digit', minute: '2-digit'
+    }).format(moment).replace(' om ', ' ');
+  }
+
+  /* De Nederlandse landnaam komt uit de browser, zodat data/landen.js geen
+   * vertaalde namen hoeft bij te houden. Kan de browser het niet, dan is de
+   * landcode het etiket. */
+  var landnamen = (function () {
+    try {
+      return new Intl.DisplayNames(['nl'], { type: 'region' });
+    } catch (e) {
+      return null;
+    }
+  })();
+
+  function landnaam(code) {
+    if (!landnamen) return code;
+    try {
+      return landnamen.of(code) || code;
+    } catch (e) {
+      return code;
+    }
+  }
 
   /* --------------------------------------------------------------- toestand */
 
@@ -24,11 +62,32 @@
 
   /* ---------------------------------------------------------------- feiten */
 
-  /* Het enige feit dat de tool zelf afleidt. */
+  /* Welke klok telt: die van het aanspreekpunt. Belt iemand uit Nederland, dan
+   * is dat casemanagement; belt iemand uit het buitenland, dan de post in het
+   * gekozen land. */
+  function tijdzoneVanAanspreekpunt(f) {
+    if (f.bellerLand === 'nederland') return 'Europe/Amsterdam';
+    if (f.bellerLand === 'buitenland' && f.bellerLandCode) return LAND.landen[f.bellerLandCode];
+    return null;
+  }
+
+  /* De twee feiten die de tool zelf afleidt. */
   function feiten() {
     var f = {};
     for (var k in state.antwoorden) f[k] = state.antwoorden[k];
-    f.caribisch = (f.bellerLand === 'caribisch' || f.overlijdenLand === 'caribisch') ? 'ja' : 'nee';
+
+    /* Aruba en Curaçao staan ook gewoon in de landenselector. Zonder deze
+     * check zou je de Caribische regel eromheen kunnen klikken. */
+    var caribischLand = f.bellerLandCode && LAND.caribischNL.indexOf(f.bellerLandCode) !== -1;
+    f.caribisch = (f.bellerLand === 'caribisch' || f.overlijdenLand === 'caribisch' || caribischLand)
+      ? 'ja' : 'nee';
+
+    if (f.caribisch === 'ja') {
+      f.kantoortijd = 'nvt';
+    } else {
+      var zone = tijdzoneVanAanspreekpunt(f);
+      if (zone) f.kantoortijd = isOpen(zone, new Date()) ? 'ja' : 'nee';
+    }
     return f;
   }
 
@@ -86,10 +145,13 @@
 
   function metWieTekst(advies) {
     if (advies.metWie) return advies.metWie;
-    var punt = L.aanspreekpunten[state.antwoorden.bellerLand] || L.aanspreekpunten.onbekend;
+    /* Een regel mag de plek overrulen: bij de lokale autoriteiten is het
+     * altijd de post, waar de beller ook is. */
+    var punt = L.aanspreekpunten[advies.metWiePlek || state.antwoorden.bellerLand];
+    if (!punt) return 'Nog niet te bepalen';
     if (advies.metWieSoort === 'dda') return punt.dda;
     if (advies.metWieSoort === 'auto') {
-      return state.antwoorden.kantoortijd === 'nee' ? punt.dda : punt.naam;
+      return feiten().kantoortijd === 'nee' ? punt.dda : punt.naam;
     }
     return punt.naam;
   }
@@ -154,27 +216,16 @@
     var legenda = el('legend', 'vraag', stap.vraag);
     veld.appendChild(legenda);
 
+    var isLand = stap.type === 'land';
     if (state.fout) {
-      var fout = el('p', 'fout', 'Kies een antwoord.');
+      var fout = el('p', 'fout', isLand ? 'Kies een land.' : 'Kies een antwoord.');
       fout.setAttribute('role', 'alert');
       veld.appendChild(fout);
     }
 
-    var lijst = el('div', 'opties');
-    stap.opties.forEach(function (optie, i) {
-      var rij = el('div', 'optie');
-      var keuze = document.createElement('input');
-      keuze.type = 'radio';
-      keuze.name = stap.id;
-      keuze.id = 'optie-' + i;
-      keuze.value = optie.waarde;
-      var label = el('label', 'optie-label', optie.label);
-      label.htmlFor = keuze.id;
-      rij.appendChild(keuze);
-      rij.appendChild(label);
-      lijst.appendChild(rij);
-    });
-    veld.appendChild(lijst);
+    /* gekozen() geeft de waarde terug, of een lege string als er nog niets
+     * gekozen is. Beide staptypes leveren die functie. */
+    var gekozen = isLand ? tekenLandKeuze(veld, stap) : tekenOpties(veld, stap);
     formulier.appendChild(veld);
 
     var knoppen = el('div', 'knoppen');
@@ -192,22 +243,95 @@
     /* Zolang er niets gekozen is, staat de knop grijs en gestippeld. Klikbaar
      * blijft hij wel: een uitgezette knop zegt niet wat eraan schort. */
     formulier.addEventListener('change', function () {
-      volgende.classList.toggle('knop--klaar', !!formulier.querySelector('input:checked'));
+      volgende.classList.toggle('knop--klaar', !!gekozen());
     });
 
     formulier.addEventListener('submit', function (e) {
       e.preventDefault();
-      var gekozen = formulier.querySelector('input:checked');
-      if (!gekozen) {
+      var waarde = gekozen();
+      if (!waarde) {
         state.fout = true;
         teken();
         return;
       }
-      antwoord(stap.id, gekozen.value);
+      antwoord(stap.id, waarde);
     });
 
     scherm.appendChild(formulier);
     return scherm;
+  }
+
+  function tekenOpties(veld, stap) {
+    var lijst = el('div', 'opties');
+    stap.opties.forEach(function (optie, i) {
+      var rij = el('div', 'optie');
+      var keuze = document.createElement('input');
+      keuze.type = 'radio';
+      keuze.name = stap.id;
+      keuze.id = 'optie-' + i;
+      keuze.value = optie.waarde;
+      var label = el('label', 'optie-label', optie.label);
+      label.htmlFor = keuze.id;
+      rij.appendChild(keuze);
+      rij.appendChild(label);
+      lijst.appendChild(rij);
+    });
+    veld.appendChild(lijst);
+
+    return function () {
+      var aan = lijst.querySelector('input:checked');
+      return aan ? aan.value : '';
+    };
+  }
+
+  /* Een gewone <select>: typen springt naar het land, hij werkt op een
+   * telefoon, en een schermlezer kent hem. Daaronder de lokale tijd daar. */
+  function tekenLandKeuze(veld, stap) {
+    var doos = el('div', 'landkeuze');
+
+    var keuze = document.createElement('select');
+    keuze.className = 'landselect';
+    keuze.id = 'land-' + stap.id;
+    keuze.name = stap.id;
+
+    var leeg = document.createElement('option');
+    leeg.value = '';
+    leeg.textContent = 'Kies een land…';
+    keuze.appendChild(leeg);
+
+    Object.keys(LAND.landen)
+      .map(function (code) { return { code: code, naam: landnaam(code) }; })
+      .sort(function (a, b) { return a.naam.localeCompare(b.naam, 'nl'); })
+      .forEach(function (land) {
+        var optie = document.createElement('option');
+        optie.value = land.code;
+        optie.textContent = land.naam;
+        keuze.appendChild(optie);
+      });
+
+    doos.appendChild(keuze);
+
+    var regel = el('p', 'landtijd');
+    regel.setAttribute('aria-live', 'polite');
+    doos.appendChild(regel);
+
+    function toonTijd() {
+      regel.textContent = '';
+      var zone = LAND.landen[keuze.value];
+      if (!zone) return;
+      var moment = new Date();
+      regel.appendChild(document.createTextNode(
+        'Lokale tijd in ' + landnaam(keuze.value) + ': ' + tijdTekst(zone, moment) + ' — '));
+      var open = isOpen(zone, moment);
+      regel.appendChild(el('span', 'vlag ' + (open ? 'vlag--open' : 'vlag--dicht'),
+        open ? 'de post is nu open' : 'de post is nu dicht'));
+    }
+
+    keuze.addEventListener('change', toonTijd);
+    toonTijd();
+    veld.appendChild(doos);
+
+    return function () { return keuze.value; };
   }
 
   /* --------------------------------------------------------------- uitkomst */

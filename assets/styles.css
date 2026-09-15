@@ -112,6 +112,29 @@ body {
 
 .optie-label { cursor: pointer; }
 
+/* ----------------------------------------------------------- landenselector */
+
+.landkeuze { margin-top: 38px; }
+
+.landselect {
+  width: 100%;
+  max-width: 420px;
+  padding: 11px 12px;
+  background: #ffffff;
+  border: 1px solid var(--rand);
+  border-radius: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.landselect:focus-visible { outline: 2px solid var(--donkerblauw); outline-offset: 2px; }
+
+.landtijd { min-height: 1.5em; margin: 14px 0 0; color: var(--grijs); }
+
+.vlag { font-weight: 600; }
+.vlag--open { color: var(--geen); }
+.vlag--dicht { color: var(--direct); }
+
 /* ---------------------------------------------------------------- knoppen */
 
 .knoppen {

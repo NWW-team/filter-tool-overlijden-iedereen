@@ -35,9 +35,15 @@
  * Staat er een lijst van zulke objecten, dan hoeft er maar één te kloppen:
  *     [ { melder: ['autoriteiten'] }, { begraven: ['nee', 'ja'] } ]
  *
- * Naast de antwoorden is er één afgeleid feit, dat de tool zelf uitrekent:
- *     caribisch — 'ja' | 'nee'  (de beller of het overlijden is in de
- *                                Caribische delen van het Koninkrijk)
+ * Naast de antwoorden zijn er twee afgeleide feiten, die de tool zelf uitrekent:
+ *     caribisch   — 'ja' | 'nee'  (de beller of het overlijden is in de
+ *                                  Caribische delen van het Koninkrijk)
+ *     kantoortijd — 'ja' | 'nee' | 'nvt'  (is het nu tussen 9 en 17 uur bij het
+ *                                  aanspreekpunt? 'nvt' in de Caribische delen)
+ *
+ * LET OP: de tool rekent met de aanname dat élke post elke dag van 9 tot 17 uur
+ * lokale tijd open is, ook in het weekend. Echte openingstijden per post zitten
+ * er niet in.
  */
 window.FILTERLOGICA = (function () {
   'use strict';
@@ -67,15 +73,8 @@ window.FILTERLOGICA = (function () {
   var NOTEER = 'Noteer in de Communication-tab van Hermes hoe je het gesprek hebt afgerond (stap 5).';
   var WACHT = 'Vraag of je de beller in de wacht mag zetten en zeg dat je gaat overleggen met een collega.';
 
-  /* Waar iemand is, in vier smaken. Meer onderscheid heeft de filter niet
-   * nodig: het bepaalt alleen met wie je overlegt. */
-  var PLEKKEN = [
-    { waarde: 'nederland', label: 'In Nederland' },
-    { waarde: 'buitenland', label: 'In het buitenland' },
-    { waarde: 'caribisch', label: 'In het Caribisch deel van het Koninkrijk' },
-    { waarde: 'onbekend', label: 'Weet ik niet' }
-  ];
-
+  /* Nergens een "weet ik niet": dat kan de voorlichter aan de beller vragen.
+   * De tool dwingt dus een keuze af. */
   var stappen = [
     {
       id: 'melder',
@@ -91,28 +90,35 @@ window.FILTERLOGICA = (function () {
       vraag: 'Is de persoon al begraven of gecremeerd?',
       opties: [
         { waarde: 'nee', label: 'Nee, nog niet' },
-        { waarde: 'ja', label: 'Ja, al begraven of gecremeerd' },
-        { waarde: 'onbekend', label: 'Weet ik niet' }
+        { waarde: 'ja', label: 'Ja, al begraven of gecremeerd' }
       ]
     },
     {
       id: 'bellerLand',
       vraag: 'Waar is de beller op dit moment?',
-      opties: PLEKKEN
+      opties: [
+        { waarde: 'nederland', label: 'In Nederland' },
+        { waarde: 'buitenland', label: 'In het buitenland' },
+        { waarde: 'caribisch', label: 'In het Caribisch deel van het Koninkrijk' }
+      ]
     },
     {
+      /* De landenselector. Hieruit komt de tijdzone, en daarmee of de post
+       * open is. */
+      id: 'bellerLandCode',
+      type: 'land',
+      als: { bellerLand: ['buitenland'] },
+      vraag: 'In welk land is de beller?'
+    },
+    {
+      /* Alleen een overlijden buiten Nederland is voor Buitenlandse Zaken
+       * relevant; "in Nederland" staat er daarom niet bij. Deze vraag bestaat
+       * alleen nog om de Caribische regel te laten afgaan. */
       id: 'overlijdenLand',
       vraag: 'Waar is de persoon overleden?',
-      opties: PLEKKEN
-    },
-    {
-      id: 'kantoortijd',
-      als: { caribisch: ['nee'], bellerLand: ['nederland', 'buitenland'] },
-      vraag: 'Is het nu kantoortijd bij het aanspreekpunt?',
       opties: [
-        { waarde: 'ja', label: 'Ja, het aanspreekpunt is nu open' },
-        { waarde: 'nee', label: 'Nee, het is daar buiten kantoortijd' },
-        { waarde: 'onbekend', label: 'Weet ik niet' }
+        { waarde: 'buitenland', label: 'In het buitenland' },
+        { waarde: 'caribisch', label: 'In het Caribisch deel van het Koninkrijk' }
       ]
     },
     {
@@ -121,14 +127,17 @@ window.FILTERLOGICA = (function () {
       vraag: 'Zijn de directe nabestaanden al op de hoogte?',
       opties: [
         { waarde: 'ja', label: 'Ja, de familie weet het' },
-        { waarde: 'nee', label: 'Nee, nog niet' },
-        { waarde: 'onbekend', label: 'Weet ik niet' }
+        { waarde: 'nee', label: 'Nee, nog niet' }
       ]
     }
   ];
 
   /* Met wie je overlegt, afgeleid van waar de beller is.
-   * Uit WI: Overleg met post of casemanagement. */
+   * Uit WI: Overleg met post of casemanagement.
+   *
+   * Een regel kan dit overrulen met `metWiePlek`: dan telt niet waar de beller
+   * is, maar de plek die de regel noemt. Dat is nodig bij een melding van de
+   * lokale autoriteiten, waar je altijd bij de post moet zijn. */
   var aanspreekpunten = {
     nederland: {
       naam: 'casemanagement',
@@ -141,10 +150,6 @@ window.FILTERLOGICA = (function () {
     caribisch: {
       naam: 'niemand — hier is geen consulaire bijstand',
       dda: 'niemand — hier is geen consulaire bijstand'
-    },
-    onbekend: {
-      naam: 'nog niet te bepalen',
-      dda: 'nog niet te bepalen'
     }
   };
 
@@ -167,34 +172,21 @@ window.FILTERLOGICA = (function () {
       }
     },
     {
-      id: 'beller-onbekend',
-      naam: 'Onbekend waar de beller is',
-      grondslag: 'WI: Overleg met post of casemanagement',
-      wanneer: { bellerLand: ['onbekend'] },
-      advies: {
-        niveau: 'overleg',
-        kop: 'Vraag eerst waar de beller is',
-        metWie: 'Nog niet te bepalen',
-        stappen: [
-          'Vraag in welk land de beller op dit moment is.',
-          'Daarna zegt de tool met wie je overlegt en of dat nu moet.',
-          NOTEER
-        ],
-        toelichting: 'Met wie je overlegt hangt af van waar de beller is: in Nederland casemanagement, in het buitenland de post daar.',
-        anders: [NIEMAND]
-      }
-    },
-    {
       id: 'lokale-autoriteiten',
       naam: 'Melding van lokale autoriteiten',
       grondslag: 'WI: Overlijden, stap 4 — Melding van lokale autoriteiten',
       wanneer: { melder: ['autoriteiten'] },
       advies: {
         niveau: 'direct',
-        kop: 'Altijd overleggen',
+        kop: 'Altijd overleggen met de post',
+        metWiePlek: 'buitenland',
         metWieSoort: 'auto',
-        stappen: [WACHT, 'Overleg, ook buiten reguliere kantoortijden.', NOTEER],
-        toelichting: 'Bij een melding van de lokale autoriteiten overleg je altijd, ongeacht het tijdstip.',
+        stappen: [
+          WACHT,
+          'Overleg met de post, ook als die nu dicht is. Bel dan de post-DDA via de BOA.',
+          NOTEER
+        ],
+        toelichting: 'Bij een melding van de lokale autoriteiten overleg je altijd met de post, ongeacht het tijdstip. Is de post gesloten, dan gaat het overleg via de DDA — het wacht niet tot morgen.',
         anders: [NIEMAND]
       }
     },
@@ -242,13 +234,13 @@ window.FILTERLOGICA = (function () {
       id: 'begraven-buiten-kantoortijd-familie-onwetend',
       naam: 'Al begraven of gecremeerd, buiten kantoortijden, familie nog niet op de hoogte',
       grondslag: 'WI: Overlijden, stap 4 — Al begraven/gecremeerd, buiten lokale kantoortijden',
-      wanneer: { melder: ['anders'], begraven: ['ja'], kantoortijd: ['nee'], familie: ['nee', 'onbekend'] },
+      wanneer: { melder: ['anders'], begraven: ['ja'], kantoortijd: ['nee'], familie: ['nee'] },
       advies: {
         niveau: 'direct',
         kop: 'Overleggen met de DDA',
         metWieSoort: 'dda',
         stappen: [WACHT, 'Bel de DDA; de familie weet het nog niet.', NOTEER],
-        toelichting: 'Uitstel tot de volgende werkdag mag alleen als je wéét dat de familie al op de hoogte is. Weet je dat niet zeker, dan volgt de tool deze tak.',
+        toelichting: 'Uitstel tot de volgende werkdag mag alleen als je wéét dat de familie al op de hoogte is. Weet je dat niet zeker, vraag het dan na — de tool kent hier geen derde antwoord.',
         anders: [TWIJFEL, NIEMAND]
       }
     },
@@ -266,42 +258,6 @@ window.FILTERLOGICA = (function () {
           NOTEER
         ],
         toelichting: 'De familie is op de hoogte en de persoon is al begraven of gecremeerd: hiervoor hoeft niemand buiten kantoortijd gebeld te worden.'
-      }
-    },
-    {
-      id: 'begraven-onbekend',
-      naam: 'Onbekend of de persoon al begraven of gecremeerd is',
-      grondslag: 'WI: Overlijden, stap 4 — "Ik twijfel om de DDA te bellen"',
-      wanneer: { melder: ['anders'], begraven: ['onbekend'] },
-      advies: {
-        niveau: 'overleg',
-        kop: 'Zoek dit uit, of gebruik de twijfelroute',
-        metWie: 'Eerst de vraagbaak; is die er niet, je directe collega’s',
-        stappen: [
-          'Vraag de beller of de persoon al begraven of gecremeerd is — hierop splitst de instructie.',
-          'Krijg je dat niet helder: overleg met de vraagbaak, of anders met je directe collega’s.',
-          NOTEER
-        ],
-        toelichting: 'De instructie kent alleen de route "nog niet begraven" en de route "al begraven of gecremeerd". Zonder dat antwoord kiest de tool geen van beide voor je.',
-        anders: [NIEMAND]
-      }
-    },
-    {
-      id: 'kantoortijd-onbekend',
-      naam: 'Kantoortijden van het aanspreekpunt niet vast te stellen',
-      grondslag: 'WI: Overleg met post of casemanagement — land zonder Nederlandse post',
-      wanneer: { kantoortijd: ['onbekend'] },
-      advies: {
-        niveau: 'overleg',
-        kop: 'Zoek eerst uit welke post waarneemt',
-        metWieSoort: 'aanspreekpunt',
-        stappen: [
-          'Kijk bij de resortlanden op de landenpagina’s welke post verantwoordelijk is.',
-          'Bel die post binnen kantoortijd; daarbuiten de post-DDA via de BOA.',
-          NOTEER
-        ],
-        toelichting: 'Zonder de kantoortijden van die post kan de tool niet zeggen of dit tot morgen kan wachten. Twijfel je: eerst de vraagbaak.',
-        anders: [TWIJFEL, NIEMAND]
       }
     },
     {
@@ -325,7 +281,7 @@ window.FILTERLOGICA = (function () {
   ];
 
   return {
-    versie: '3.0',
+    versie: '4.0',
     bijgewerkt: '2026-09-15',
     bron: 'WI: Overlijden (stap 4) en WI: Overleg met post of casemanagement',
     links: LINK,
